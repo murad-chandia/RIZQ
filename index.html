@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0E0E0E">
+  <title>Tarteeb Rush</title>
+  <meta name="description" content="A logistics game by Tarteeb, the Logistics Department of RIZQ Society.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- START SCREEN -->
+    <section id="screen-start" class="screen active" aria-label="Start">
+      <div class="start-inner">
+        <p class="kicker" data-text="meta.org"></p>
+        <h1 class="logo"><span class="logo-a">Tarteeb</span><span class="logo-b">Rush</span></h1>
+        <p class="tagline" data-text="meta.tagline"></p>
+        <ul class="howto" id="howto"></ul>
+        <button class="btn btn-primary" id="btn-start" type="button"></button>
+        <p class="best" id="start-best"></p>
+      </div>
+    </section>
+
+    <!-- GAME SCREEN -->
+    <section id="screen-game" class="screen" aria-label="Game">
+      <header class="hud">
+        <div class="hud-row">
+          <div class="hud-stat"><span class="hud-label">Score</span><span class="hud-value" id="hud-score">0</span></div>
+          <div class="hud-level" id="hud-level"></div>
+          <div class="hud-stat hud-timer"><span class="hud-label">Doors in</span><span class="hud-value" id="hud-timer">0</span></div>
+          <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause">⏸</button>
+        </div>
+        <div class="meter" id="meter">
+          <div class="meter-fill" id="meter-fill"></div>
+          <span class="meter-text" id="meter-text"></span>
+        </div>
+      </header>
+
+      <div id="arena">
+        <div id="supply"></div>
+        <div id="stations"></div>
+        <div id="layer"></div>
+      </div>
+    </section>
+
+    <!-- OVERLAY CARD (level intros, results, pause) -->
+    <div id="overlay" class="overlay" hidden>
+      <div class="card" role="dialog" aria-modal="true">
+        <p class="card-kicker" id="card-kicker"></p>
+        <h2 class="card-title" id="card-title"></h2>
+        <div class="card-body" id="card-body"></div>
+        <div class="card-actions" id="card-actions"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="content.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

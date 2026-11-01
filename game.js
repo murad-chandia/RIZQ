@@ -1,0 +1,620 @@
+/*
+ * Tarteeb Rush: game logic.
+ * All player-facing text comes from content.js (window.TARTEEB_CONTENT).
+ */
+(() => {
+  'use strict';
+
+  const C = window.TARTEEB_CONTENT;
+  if (!C) { document.body.textContent = 'content.js failed to load.'; return; }
+
+  /* ================= HELPERS ================= */
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const fill = (tpl, vars) => String(tpl).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  const fmt = n => Math.round(n).toLocaleString('en-US');
+
+  function h(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function weightedPick(weights) {
+    const keys = Object.keys(weights);
+    let total = 0;
+    for (const k of keys) total += weights[k];
+    let r = Math.random() * total;
+    for (const k of keys) { r -= weights[k]; if (r <= 0) return k; }
+    return keys[keys.length - 1];
+  }
+
+  // Resolve "meta.tagline" style paths into content.js
+  function contentPath(path) {
+    return path.split('.').reduce((o, k) => (o ? o[k] : undefined), C);
+  }
+
+  /* ================= STORAGE (always wrapped) ================= */
+  const store = {
+    get(key, fallback) {
+      try {
+        const v = window.localStorage.getItem(key);
+        return v === null ? fallback : JSON.parse(v);
+      } catch (e) { return fallback; }
+    },
+    set(key, value) {
+      try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked */ }
+    },
+  };
+  const KEYS = { high: 'tarteebRush.highScore' };
+
+  /* ================= TUNING ================= */
+  const POINTS = {
+    deliver: 100,
+    wrong: -50,
+    wrongTime: 2,        // seconds lost on wrong station
+    timeBonus: 20,       // per second left on clear
+  };
+  const DRAG_THRESHOLD = 8; // px before a press becomes a drag
+
+  /* ================= DOM ================= */
+  const el = {
+    app: $('#app'),
+    screens: {
+      start: $('#screen-start'),
+      game: $('#screen-game'),
+    },
+    howto: $('#howto'),
+    btnStart: $('#btn-start'),
+    startBest: $('#start-best'),
+    score: $('#hud-score'),
+    timer: $('#hud-timer'),
+    timerWrap: $('#hud-timer').parentElement,
+    level: $('#hud-level'),
+    meterFill: $('#meter-fill'),
+    meterText: $('#meter-text'),
+    btnPause: $('#btn-pause'),
+    arena: $('#arena'),
+    supply: $('#supply'),
+    stations: $('#stations'),
+    layer: $('#layer'),
+    overlay: $('#overlay'),
+    cardKicker: $('#card-kicker'),
+    cardTitle: $('#card-title'),
+    cardBody: $('#card-body'),
+    cardActions: $('#card-actions'),
+  };
+  const stationEls = {};
+
+  /* ================= STATE ================= */
+  const state = {
+    screen: 'start',
+    levelIndex: 0,
+    running: false,
+    paused: false,
+    timeLeft: 0,
+    readiness: 0,
+    score: 0,
+    levelStartScore: 0,
+    combo: 0,
+    spawnTimer: 0,
+    nextId: 1,
+    items: [],
+    selected: null,
+    drag: null,
+    highScore: store.get(KEYS.high, 0),
+    stats: null,
+  };
+
+  function freshStats() {
+    return { delivered: 0, wrong: 0, maxCombo: 0 };
+  }
+
+  const level = () => C.levels[state.levelIndex];
+  const rules = () => level().rules;
+
+  /* ================= SCREENS & CARDS ================= */
+  function setScreen(name) {
+    state.screen = name;
+    for (const key in el.screens) el.screens[key].classList.toggle('active', key === name);
+  }
+
+  // buttons: [{ label, primary, onClick }]
+  function showCard({ kicker = '', title = '', body = null, buttons = [] }) {
+    el.cardKicker.textContent = kicker;
+    el.cardTitle.textContent = title;
+    el.cardBody.replaceChildren();
+    if (body) el.cardBody.append(...[].concat(body));
+    el.cardActions.replaceChildren();
+    for (const b of buttons) {
+      const btn = h('button', 'btn ' + (b.primary ? 'btn-primary' : 'btn-ghost'), b.label);
+      btn.type = 'button';
+      btn.addEventListener('click', () => { b.onClick(); });
+      el.cardActions.appendChild(btn);
+    }
+    el.overlay.hidden = false;
+    const card = el.overlay.querySelector('.card');
+    card.style.animation = 'none';
+    void card.offsetWidth; // restart entrance animation
+    card.style.animation = '';
+    const first = el.cardActions.querySelector('.btn-primary');
+    if (first) first.focus({ preventScroll: true });
+  }
+  function hideCard() { el.overlay.hidden = true; }
+
+  function para(text, cls) { return h('p', cls || '', text); }
+
+  function scoreTable(rows) {
+    const table = h('table', 'score-table');
+    for (const [label, value, cls] of rows) {
+      const tr = h('tr', cls || '');
+      tr.append(h('td', '', label), h('td', '', value));
+      table.appendChild(tr);
+    }
+    return table;
+  }
+
+  /* ================= SETUP ================= */
+  function fillStaticText() {
+    document.querySelectorAll('[data-text]').forEach(node => {
+      const v = contentPath(node.dataset.text);
+      if (v != null) node.textContent = v;
+    });
+    el.howto.replaceChildren(...C.ui.howTo.map(t => h('li', '', t)));
+    el.btnStart.textContent = C.ui.startButton;
+    renderBest();
+  }
+
+  function renderBest() {
+    el.startBest.textContent = state.highScore > 0 ? fill(C.ui.highScore, { score: fmt(state.highScore) }) : '';
+  }
+
+  function buildStations() {
+    el.stations.replaceChildren();
+    for (const s of C.stations) {
+      const node = h('div', 'station');
+      node.dataset.station = s.id;
+      node.append(h('span', 'station-icon', s.icon), h('span', 'station-name', s.name), h('span', 'station-count', ''));
+      el.stations.appendChild(node);
+      stationEls[s.id] = node;
+    }
+  }
+
+  /* ================= GEOMETRY ================= */
+  function itemSize() {
+    return parseFloat(getComputedStyle(el.app).getPropertyValue('--item')) || 64;
+  }
+  function localRect(node) {
+    const a = el.arena.getBoundingClientRect();
+    const r = node.getBoundingClientRect();
+    return { x: r.left - a.left, y: r.top - a.top, w: r.width, h: r.height };
+  }
+  function toLocal(e) {
+    const a = el.arena.getBoundingClientRect();
+    return { x: e.clientX - a.left, y: e.clientY - a.top };
+  }
+  function stationAt(p) {
+    for (const id in stationEls) {
+      const r = localRect(stationEls[id]);
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return id;
+    }
+    return null;
+  }
+  function stationCenter(id) {
+    const r = localRect(stationEls[id]);
+    return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+  }
+
+  /* ================= ITEMS ================= */
+  function place(o) {
+    o.el.style.transform = `translate3d(${o.x}px, ${o.y}px, 0)`;
+  }
+
+  function freeSpot() {
+    const size = itemSize();
+    const sr = localRect(el.supply);
+    const pad = 6;
+    const minX = sr.x + pad, maxX = Math.max(minX, sr.x + sr.w - size - pad);
+    const minY = sr.y + pad, maxY = Math.max(minY, sr.y + sr.h - size - pad);
+    let best = null, bestD = -1;
+    for (let i = 0; i < 16; i++) {
+      const x = rand(minX, maxX), y = rand(minY, maxY);
+      let d = Infinity;
+      for (const it of state.items) d = Math.min(d, Math.hypot(it.homeX - x, it.homeY - y));
+      if (d > bestD) { bestD = d; best = { x, y }; }
+    }
+    return best;
+  }
+
+  function spawnItem(type, extra = {}) {
+    const def = extra.def || C.supplies[type];
+    if (!def) return null;
+    const spot = freeSpot();
+    const node = h('div', 'item spawn');
+    const inner = h('div', 'item-inner');
+    inner.style.setProperty('--bob-delay', `${rand(0, 2).toFixed(2)}s`);
+    inner.append(h('span', 'item-emoji', def.emoji), h('span', 'item-label', def.label));
+    node.appendChild(inner);
+    const item = {
+      id: state.nextId++, type, station: def.station,
+      x: spot.x, y: spot.y, homeX: spot.x, homeY: spot.y,
+      el: node, ...extra,
+    };
+    place(item);
+    el.layer.appendChild(node);
+    state.items.push(item);
+    setTimeout(() => node.classList.remove('spawn'), 400);
+    return item;
+  }
+
+  function removeItem(item, toward) {
+    state.items = state.items.filter(i => i !== item);
+    if (state.selected === item) clearSelection();
+    if (toward) {
+      const size = itemSize();
+      item.el.classList.add('delivered');
+      item.el.style.transform = `translate3d(${toward.x - size / 2}px, ${toward.y - size / 2}px, 0) scale(.3)`;
+      setTimeout(() => item.el.remove(), 280);
+    } else {
+      item.el.remove();
+    }
+  }
+
+  function returnHome(item) {
+    item.el.classList.add('moving');
+    item.x = item.homeX; item.y = item.homeY;
+    place(item);
+    setTimeout(() => item.el.classList.remove('moving'), 240);
+  }
+
+  function clearItems() {
+    for (const it of state.items) it.el.remove();
+    state.items = [];
+    state.selected = null;
+    state.drag = null;
+    el.layer.querySelectorAll('.flash').forEach(n => n.remove());
+  }
+
+  /* ================= SELECTION ================= */
+  function select(item) {
+    clearSelection();
+    state.selected = item;
+    item.el.classList.add('selected');
+    for (const id in stationEls) stationEls[id].classList.add('armed');
+  }
+  function clearSelection() {
+    if (state.selected) state.selected.el.classList.remove('selected');
+    state.selected = null;
+    for (const id in stationEls) stationEls[id].classList.remove('armed', 'hover');
+  }
+
+  /* ================= FEEDBACK ================= */
+  function flash(text, x, y, cls = 'good') {
+    const node = h('div', 'flash ' + cls, text);
+    node.style.left = `${x}px`;
+    node.style.top = `${y}px`;
+    el.layer.appendChild(node);
+    setTimeout(() => node.remove(), 950);
+  }
+
+  function shake() {
+    el.screens.game.classList.remove('shake');
+    void el.screens.game.offsetWidth;
+    el.screens.game.classList.add('shake');
+  }
+
+  function bumpStation(id, cls) {
+    const node = stationEls[id];
+    node.classList.remove('hit', 'miss');
+    void node.offsetWidth;
+    node.classList.add(cls);
+  }
+
+  /* ================= SCORING ================= */
+  function comboMult() {
+    return Math.min(3, 1 + Math.floor(state.combo / 4) * 0.5);
+  }
+  function addScore(pts) {
+    state.score = Math.max(0, state.score + pts);
+  }
+  function addReadiness(pct) {
+    state.readiness = clamp(state.readiness + pct, 0, 100);
+    if (state.readiness >= 100 && state.running) levelClear();
+  }
+
+  /* ================= DELIVERY ================= */
+  function deliver(item, stationId) {
+    clearSelection();
+    const c = stationCenter(stationId);
+    if (item.station === stationId) {
+      removeItem(item, c);
+      state.combo++;
+      state.stats.delivered++;
+      state.stats.maxCombo = Math.max(state.stats.maxCombo, state.combo);
+      const mult = comboMult();
+      const pts = Math.round(POINTS.deliver * mult);
+      addScore(pts);
+      flash(mult > 1 ? `+${pts} ×${mult}` : `+${pts}`, c.x, c.y - 10, 'good');
+      bumpStation(stationId, 'hit');
+      const count = stationEls[stationId].querySelector('.station-count');
+      count.textContent = String((parseInt(count.textContent, 10) || 0) + 1);
+      addReadiness(100 / rules().target);
+    } else {
+      returnHome(item);
+      state.combo = 0;
+      state.stats.wrong++;
+      addScore(POINTS.wrong);
+      state.timeLeft = Math.max(0, state.timeLeft - POINTS.wrongTime);
+      flash(`${C.ui.wrongStation} −${POINTS.wrongTime}s`, c.x, c.y - 10, 'bad');
+      bumpStation(stationId, 'miss');
+      shake();
+    }
+  }
+
+  /* ================= INPUT (pointer events only) ================= */
+  function onPointerDown(e) {
+    if (!state.running || state.paused || state.drag) return;
+    const itemNode = e.target.closest('.item');
+    if (itemNode) {
+      const item = state.items.find(i => i.el === itemNode);
+      if (!item) return;
+      e.preventDefault();
+      const p = toLocal(e);
+      state.drag = { item, pid: e.pointerId, sx: p.x, sy: p.y, ox: p.x - item.x, oy: p.y - item.y, moved: false };
+      item.el.classList.add('dragging');
+      try { el.arena.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      return;
+    }
+    const stationNode = e.target.closest('.station');
+    if (stationNode && state.selected) {
+      deliver(state.selected, stationNode.dataset.station);
+      return;
+    }
+    clearSelection();
+  }
+
+  function onPointerMove(e) {
+    const d = state.drag;
+    if (!d || e.pointerId !== d.pid) return;
+    const p = toLocal(e);
+    if (!d.moved && Math.hypot(p.x - d.sx, p.y - d.sy) > DRAG_THRESHOLD) {
+      d.moved = true;
+      if (state.selected) clearSelection();
+    }
+    if (!d.moved) return;
+    const size = itemSize();
+    const a = el.arena.getBoundingClientRect();
+    d.item.x = clamp(p.x - d.ox, 0, a.width - size);
+    d.item.y = clamp(p.y - d.oy, 0, a.height - size);
+    place(d.item);
+    const over = stationAt(p);
+    for (const id in stationEls) stationEls[id].classList.toggle('hover', id === over);
+  }
+
+  function onPointerUp(e) {
+    const d = state.drag;
+    if (!d || e.pointerId !== d.pid) return;
+    state.drag = null;
+    d.item.el.classList.remove('dragging');
+    for (const id in stationEls) stationEls[id].classList.remove('hover');
+    if (!state.items.includes(d.item)) return; // removed mid-drag
+    if (d.moved) {
+      const st = e.type === 'pointerup' ? stationAt(toLocal(e)) : null;
+      if (st) deliver(d.item, st);
+      else returnHome(d.item);
+    } else if (state.selected === d.item) {
+      clearSelection();
+    } else {
+      select(d.item);
+    }
+  }
+
+  /* ================= LEVEL FLOW ================= */
+  function startRun() {
+    state.score = 0;
+    state.levelIndex = 0;
+    setScreen('game');
+    showIntro();
+  }
+
+  function showIntro() {
+    const lv = level();
+    prepareLevel();
+    showCard({
+      kicker: `Level ${state.levelIndex + 1} of ${C.levels.length}`,
+      title: lv.title,
+      body: para(lv.intro, 'card-quote'),
+      buttons: [{ label: C.ui.goButton, primary: true, onClick: beginLevel }],
+    });
+  }
+
+  function prepareLevel() {
+    clearItems();
+    state.running = false;
+    state.paused = false;
+    state.timeLeft = rules().duration;
+    state.readiness = 0;
+    state.combo = 0;
+    state.spawnTimer = 0;
+    state.levelStartScore = state.score;
+    state.stats = freshStats();
+    el.level.textContent = `${state.levelIndex + 1}. ${level().title}`;
+    for (const id in stationEls) {
+      stationEls[id].querySelector('.station-count').textContent = '';
+      stationEls[id].classList.remove('armed', 'hover', 'hit', 'miss');
+    }
+    renderHud(true);
+  }
+
+  function beginLevel() {
+    hideCard();
+    // Start with a few supplies on the table so the player can act immediately.
+    for (let i = 0; i < Math.min(3, rules().maxItems); i++) spawnItem(weightedPick(rules().supplies));
+    state.running = true;
+    lastTime = performance.now();
+  }
+
+  function levelClear() {
+    state.running = false;
+    clearSelection();
+    const bonus = Math.ceil(state.timeLeft) * POINTS.timeBonus;
+    addScore(bonus);
+    const levelScore = state.score - state.levelStartScore;
+    saveHigh();
+    const isLast = state.levelIndex >= C.levels.length - 1;
+    showCard({
+      kicker: fill(C.ui.levelClearedKicker, { n: state.levelIndex + 1 }),
+      title: level().title,
+      body: [
+        para(level().clearLine, 'card-quote'),
+        scoreTable([
+          [C.ui.timeBonus, `+${fmt(bonus)}`],
+          [C.ui.levelScore, fmt(levelScore)],
+          [C.ui.totalScore, fmt(state.score), 'total'],
+        ]),
+      ],
+      buttons: isLast
+        ? [{ label: C.ui.playAgainButton, primary: true, onClick: startRun }]
+        : [{ label: C.ui.nextButton, primary: true, onClick: nextLevel }],
+    });
+  }
+
+  function nextLevel() {
+    state.levelIndex++;
+    showIntro();
+  }
+
+  function levelFail() {
+    state.running = false;
+    clearSelection();
+    shake();
+    showCard({
+      kicker: C.ui.levelFailedKicker,
+      title: fill(C.ui.levelFailedTitle, { pct: Math.floor(state.readiness) }),
+      body: para(pick(C.failLines), 'card-quote'),
+      buttons: [
+        { label: C.ui.retryButton, primary: true, onClick: retryLevel },
+        { label: C.ui.endRunButton, primary: false, onClick: endRun },
+      ],
+    });
+  }
+
+  function retryLevel() {
+    state.score = state.levelStartScore;
+    showIntro();
+  }
+
+  function endRun() {
+    state.running = false;
+    clearItems();
+    saveHigh();
+    hideCard();
+    renderBest();
+    setScreen('start');
+  }
+
+  function saveHigh() {
+    if (state.score > state.highScore) {
+      state.highScore = state.score;
+      store.set(KEYS.high, state.highScore);
+    }
+  }
+
+  /* ================= PAUSE ================= */
+  function pause() {
+    if (!state.running || state.paused) return;
+    state.paused = true;
+    if (state.drag) { returnHome(state.drag.item); state.drag.item.el.classList.remove('dragging'); state.drag = null; }
+    showCard({
+      kicker: level().title,
+      title: C.ui.pausedTitle,
+      body: para(C.ui.pausedBody),
+      buttons: [
+        { label: C.ui.resumeButton, primary: true, onClick: resume },
+        { label: C.ui.endRunButton, primary: false, onClick: endRun },
+      ],
+    });
+  }
+  function resume() {
+    hideCard();
+    state.paused = false;
+    lastTime = performance.now();
+  }
+
+  /* ================= LOOP ================= */
+  let lastTime = performance.now();
+
+  function update(dt) {
+    state.timeLeft -= dt;
+    if (state.timeLeft <= 0) { state.timeLeft = 0; levelFail(); return; }
+
+    // Spawn supplies
+    const r = rules();
+    state.spawnTimer -= dt;
+    if (state.spawnTimer <= 0 && state.items.length < r.maxItems) {
+      spawnItem(weightedPick(r.supplies));
+      state.spawnTimer = r.spawnEvery * rand(0.8, 1.25);
+    }
+  }
+
+  const hudCache = {};
+  function setText(node, key, value) {
+    if (hudCache[key] !== value) { hudCache[key] = value; node.textContent = value; }
+  }
+
+  function renderHud(force) {
+    if (force) for (const k in hudCache) delete hudCache[k];
+    setText(el.score, 'score', fmt(state.score));
+    setText(el.timer, 'timer', String(Math.ceil(state.timeLeft)));
+    el.timerWrap.classList.toggle('urgent', state.running && state.timeLeft <= 10);
+    const pct = Math.floor(state.readiness);
+    if (hudCache.pct !== pct) {
+      hudCache.pct = pct;
+      el.meterFill.style.width = `${state.readiness}%`;
+      el.meterText.textContent = `${C.ui.readiness} ${pct}%`;
+    }
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
+    lastTime = now;
+    if (state.running && !state.paused) update(dt);
+    if (state.screen === 'game') renderHud(false);
+    requestAnimationFrame(frame);
+  }
+
+  /* ================= RESIZE ================= */
+  function onResize() {
+    if (state.screen !== 'game') return;
+    const size = itemSize();
+    const sr = localRect(el.supply);
+    for (const it of state.items) {
+      it.homeX = clamp(it.homeX, sr.x, Math.max(sr.x, sr.x + sr.w - size));
+      it.homeY = clamp(it.homeY, sr.y, Math.max(sr.y, sr.y + sr.h - size));
+      if (!state.drag || state.drag.item !== it) { it.x = it.homeX; it.y = it.homeY; place(it); }
+    }
+  }
+
+  /* ================= BOOT ================= */
+  function boot() {
+    fillStaticText();
+    buildStations();
+    el.btnStart.addEventListener('click', startRun);
+    el.btnPause.addEventListener('click', pause);
+    el.arena.addEventListener('pointerdown', onPointerDown);
+    el.arena.addEventListener('pointermove', onPointerMove);
+    el.arena.addEventListener('pointerup', onPointerUp);
+    el.arena.addEventListener('pointercancel', onPointerUp);
+    window.addEventListener('resize', onResize);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+    requestAnimationFrame(frame);
+  }
+
+  boot();
+
+  // Small hook for automated smoke tests.
+  window.__tarteeb = { state, C };
+})();
