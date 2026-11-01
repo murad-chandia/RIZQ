@@ -35,6 +35,14 @@
           <div class="hud-stat hud-timer"><span class="hud-label">Doors in</span><span class="hud-value" id="hud-timer">0</span></div>
           <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause">⏸</button>
         </div>
+        <div class="tracker" aria-label="Activity tracker">
+          <div class="tracker-tarteeb">
+            <span class="tracker-name" id="tracker-name"></span>
+            <div class="tracker-bar"><div class="tracker-fill" id="tracker-fill"></div></div>
+            <span class="tracker-count" id="tracker-count">0</span>
+          </div>
+          <div class="ticker"><div class="ticker-track" id="ticker-track"></div></div>
+        </div>
         <div class="meter" id="meter">
           <div class="meter-fill" id="meter-fill"></div>
           <span class="meter-text" id="meter-text"></span>
@@ -42,9 +50,15 @@
       </header>
 
       <div id="arena">
+        <div id="npcs" aria-hidden="true"></div>
         <div id="supply"></div>
+        <div id="runway" aria-hidden="true">
+          <div id="runner"><span class="runner-carry" id="runner-carry">📦</span><span class="runner-body">T</span><span class="runner-legs"></span></div>
+        </div>
         <div id="stations"></div>
         <div id="layer"></div>
+        <div id="toasts" aria-live="polite"></div>
+        <div id="banner" aria-live="assertive"></div>
       </div>
     </section>
 

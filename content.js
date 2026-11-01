@@ -68,6 +68,10 @@ window.TARTEEB_CONTENT = {
    * rules.maxItems  = most supplies on screen at once
    * rules.spawnEvery= seconds between new supplies
    * rules.supplies  = which supplies appear, and how often (bigger number = more often)
+   * rules.problemEvery = seconds between new problems (0 = none)
+   * rules.warnTime  = seconds a problem glows before it triggers
+   * rules.maxProblems = most problems at once
+   * rules.junkEvery = seconds between NPCs dropping useless items (0 = none)
    */
   levels: [
     {
@@ -77,9 +81,84 @@ window.TARTEEB_CONTENT = {
       rules: {
         duration: 45, target: 10, maxItems: 5, spawnEvery: 0.8,
         supplies: { chairs: 3, water: 2, banner: 1, standee: 1, desk: 1, sound: 1 },
+        problemEvery: 11, warnTime: 6, maxProblems: 1, junkEvery: 9,
       },
     },
   ],
+
+  /*
+   * DEPARTMENTS (the NPCs). "id" is used by game.js; "short" is shown on the little character.
+   */
+  departments: [
+    { id: 'events',    name: 'Events',            short: 'EVT' },
+    { id: 'hr',        name: 'HR',                short: 'HR'  },
+    { id: 'marketing', name: 'Marketing',         short: 'MKT' },
+    { id: 'projects',  name: 'Projects',          short: 'PRJ' },
+    { id: 'media',     name: 'Media & Design',    short: 'M&D' },
+    { id: 'exec',      name: 'Executive Council', short: 'EC'  },
+  ],
+
+  // What the idle NPCs show above their heads.
+  npcMoods: {
+    sleep:  'Zzz',
+    phone:  '📱',
+    typing: 'typing',
+    panic:  '!!',
+    dinner: '🍽️',
+  },
+
+  // Useless things NPCs drop. Touching one costs time.
+  junk: [
+    { emoji: '📝', label: 'Another Google Form' },
+    { emoji: '📅', label: 'Meeting invite: Discuss the discussion' },
+    { emoji: '✨', label: 'Motivational quote' },
+    { emoji: '🗳️', label: 'Poll: which font?' },
+    { emoji: '🔁', label: 'Reminder about the reminder' },
+  ],
+  junkCaught: '{label}  −{s}s',
+
+  /*
+   * PROBLEMS (the initiative mechanic). Each glows on its station before it triggers.
+   *   warn    = shown while you can still prevent it
+   *   live    = shown once it has happened
+   *   station = which station it hits (must match a station id)
+   *   fix     = the item that fixes it
+   *   from    = department id that messages Tarteeb when it triggers
+   *   message = what they send
+   */
+  problems: [
+    { id: 'mic', warn: 'Mic about to die', live: 'Mic died', station: 'stage',
+      fix: { emoji: '🔋', label: 'Spare batteries' },
+      from: 'events', message: 'mic not working?? can someone from Tarteeb check 🙏' },
+    { id: 'vendor', warn: 'Vendor stuck in traffic', live: 'No food. Vendor still stuck.', station: 'refreshments',
+      fix: { emoji: '🛵', label: 'Backup vendor' },
+      from: 'marketing', message: 'we kind of promised food in the caption. Tarteeb can you handle?' },
+    { id: 'booking', warn: 'Venue double-booked', live: 'Another society is here', station: 'registration',
+      fix: { emoji: '📄', label: 'Booking proof' },
+      from: 'exec', message: 'Why are there two societies in the hall? Tarteeb please sort.' },
+    { id: 'cord', warn: 'Extension cord missing', live: 'Projector has no power', station: 'stage',
+      fix: { emoji: '🔌', label: 'Spare cord' },
+      from: 'media', message: 'our laptop died mid-slideshow. Does Tarteeb have a cord?' },
+    { id: 'guests', warn: 'Guest list changed', live: 'Wrong guest list at the desk', station: 'registration',
+      fix: { emoji: '📋', label: 'Updated list' },
+      from: 'hr', message: 'oh the list changed yesterday, did nobody tell Tarteeb?' },
+    { id: 'seats', warn: 'Running short on seats', live: 'People standing at the back', station: 'seating',
+      fix: { emoji: '🪑', label: 'Chair stack' },
+      from: 'projects', message: 'what if... more chairs? Tarteeb thoughts?' },
+  ],
+
+  // Top bar: Tarteeb's activity climbs; everyone else shows one of these.
+  tracker: {
+    tarteebLabel: 'Tarteeb',
+    statuses: ['Loading...', 'Seen ✓✓', 'Will get back to you', 'typing...', 'In a meeting', 'Reacted 👍'],
+  },
+
+  initiative: {
+    banner: 'Tarteeb saw it coming',
+    lateFix: 'Fixed. Again.',
+    warnPrefix: '⚠',
+    livePrefix: '🔥',
+  },
 
   failLines: [
     'Events: "It\'s fine, nobody noticed." Everybody noticed.',

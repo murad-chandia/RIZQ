@@ -57,7 +57,12 @@
     wrong: -50,
     wrongTime: 2,        // seconds lost on wrong station
     timeBonus: 20,       // per second left on clear
+    fix: 300,            // fixing a problem after it triggers
+    prevent: 600,        // fixing it before it triggers (double)
+    junkTime: 3,         // seconds lost touching junk
   };
+  const ACTIVITY = { perSecond: 4, deliver: 18, prevent: 45, fix: 25 };
+  const DRAIN_PER_PROBLEM = 1.6; // readiness % per second while a problem is live
   const DRAG_THRESHOLD = 8; // px before a press becomes a drag
 
   /* ================= DOM ================= */
@@ -81,6 +86,16 @@
     supply: $('#supply'),
     stations: $('#stations'),
     layer: $('#layer'),
+    npcs: $('#npcs'),
+    runway: $('#runway'),
+    runner: $('#runner'),
+    runnerCarry: $('#runner-carry'),
+    toasts: $('#toasts'),
+    banner: $('#banner'),
+    trackerName: $('#tracker-name'),
+    trackerFill: $('#tracker-fill'),
+    trackerCount: $('#tracker-count'),
+    tickerTrack: $('#ticker-track'),
     overlay: $('#overlay'),
     cardKicker: $('#card-kicker'),
     cardTitle: $('#card-title'),
@@ -103,6 +118,14 @@
     spawnTimer: 0,
     nextId: 1,
     items: [],
+    problems: [],
+    junk: [],
+    npcs: [],
+    problemTimer: 0,
+    junkTimer: 0,
+    tickerTimer: 0,
+    activity: 0,
+    runner: { x: 0, targetX: 0, dir: 1, pause: 0 },
     selected: null,
     drag: null,
     highScore: store.get(KEYS.high, 0),
@@ -110,7 +133,7 @@
   };
 
   function freshStats() {
-    return { delivered: 0, wrong: 0, maxCombo: 0 };
+    return { delivered: 0, wrong: 0, maxCombo: 0, prevented: 0, triggered: 0, lateFixes: 0, junkCaught: 0 };
   }
 
   const level = () => C.levels[state.levelIndex];
@@ -273,6 +296,11 @@
   function clearItems() {
     for (const it of state.items) it.el.remove();
     state.items = [];
+    for (const j of state.junk) j.el.remove();
+    state.junk = [];
+    clearProblems();
+    el.toasts.replaceChildren();
+    el.banner.replaceChildren();
     state.selected = null;
     state.drag = null;
     el.layer.querySelectorAll('.flash').forEach(n => n.remove());
@@ -325,12 +353,273 @@
     if (state.readiness >= 100 && state.running) levelClear();
   }
 
+
+  /* ================= TOASTS & BANNER ================= */
+  function deptName(id) {
+    const d = C.departments.find(x => x.id === id);
+    return d ? d.name : id;
+  }
+
+  function toast(from, text, cls = '') {
+    const node = h('div', 'toast ' + cls);
+    if (from) node.appendChild(h('span', 'toast-from', from));
+    node.appendChild(document.createTextNode(text));
+    el.toasts.appendChild(node);
+    while (el.toasts.children.length > 3) el.toasts.firstChild.remove();
+    setTimeout(() => { node.classList.add('out'); setTimeout(() => node.remove(), 320); }, 3400);
+  }
+
+  function banner(text, sub) {
+    el.banner.replaceChildren();
+    const inner = h('div', 'banner-inner', text);
+    if (sub) inner.appendChild(h('small', '', sub));
+    el.banner.appendChild(inner);
+    setTimeout(() => { if (inner.parentNode) inner.remove(); }, 1550);
+  }
+
+  /* ================= NPCs (other departments) ================= */
+  function buildNpcs() {
+    el.npcs.replaceChildren();
+    state.npcs = C.departments.map(d => {
+      const node = h('div', 'npc');
+      const bubble = h('span', 'npc-bubble');
+      node.append(bubble, h('div', 'npc-body', d.short));
+      node.title = d.name;
+      el.npcs.appendChild(node);
+      return { dept: d, el: node, bubble, mood: '', moodTimer: 0 };
+    });
+  }
+
+  function setMood(npc, mood) {
+    npc.mood = mood;
+    npc.el.className = 'npc ' + mood;
+    npc.bubble.textContent = C.npcMoods[mood] || '';
+  }
+
+  function levelMoods() {
+    return rules().npcMoods || ['sleep', 'phone', 'typing'];
+  }
+
+  function resetNpcs() {
+    const moods = levelMoods();
+    for (const n of state.npcs) { setMood(n, pick(moods)); n.moodTimer = rand(2, 6); }
+  }
+
+  function updateNpcs(dt) {
+    const moods = levelMoods();
+    for (const n of state.npcs) {
+      n.moodTimer -= dt;
+      if (n.moodTimer <= 0) { setMood(n, pick(moods)); n.moodTimer = rand(3, 7); }
+    }
+  }
+
+  /* ================= JUNK (useless items NPCs drop) ================= */
+  function dropJunk(npc) {
+    const def = pick(C.junk);
+    const a = localRect(npc.el);
+    const node = h('div', 'junk');
+    node.append(h('span', 'junk-emoji', def.emoji), h('span', '', def.label));
+    el.layer.appendChild(node);
+    const w = node.offsetWidth || 110;
+    const arenaW = el.arena.clientWidth;
+    const j = {
+      def, el: node, w,
+      x: clamp(a.x + a.w / 2 - w / 2, 4, arenaW - w - 4),
+      y: a.y + a.h - 6,
+      vy: rules().junkSpeed || rand(55, 75),
+      sway: rand(0, Math.PI * 2),
+      baseX: 0,
+    };
+    j.baseX = j.x;
+    place(j);
+    state.junk.push(j);
+    npc.el.classList.remove('drop'); void npc.el.offsetWidth; npc.el.classList.add('drop');
+  }
+
+  function updateJunk(dt) {
+    const limit = localRect(el.stations).y + 10;
+    for (const j of state.junk.slice()) {
+      j.y += j.vy * dt;
+      j.sway += dt * 2.2;
+      j.x = j.baseX + Math.sin(j.sway) * 12;
+      place(j);
+      if (j.y > limit) removeJunk(j, false);
+    }
+  }
+
+  function removeJunk(j, caught) {
+    state.junk = state.junk.filter(x => x !== j);
+    if (caught) { j.el.classList.add('caught'); setTimeout(() => j.el.remove(), 220); }
+    else j.el.remove();
+  }
+
+  function catchJunk(j) {
+    removeJunk(j, true);
+    state.stats.junkCaught++;
+    state.timeLeft = Math.max(0, state.timeLeft - POINTS.junkTime);
+    state.combo = 0;
+    flash(fill(C.junkCaught, { label: j.def.label, s: POINTS.junkTime }), j.x + j.w / 2, j.y, 'bad');
+    shake();
+  }
+
+  /* ================= PROBLEMS (initiative mechanic) ================= */
+  function spawnProblem(forced) {
+    const busy = new Set(state.problems.map(p => p.station));
+    const options = C.problems.filter(p => !busy.has(p.station) && (!rules().problems || rules().problems.includes(p.id)));
+    if (!options.length) return false;
+    const def = pick(options);
+    const stationNode = stationEls[def.station];
+    const chip = h('div', 'station-alert');
+    const label = h('span', '', `${C.initiative.warnPrefix} ${def.warn} → ${def.fix.emoji}`);
+    const bar = h('span', 'alert-bar');
+    chip.append(label, bar);
+    stationNode.appendChild(chip);
+    stationNode.classList.add('warn');
+    const warnTime = rules().warnTime || 6;
+    const problem = { def, station: def.station, phase: 'warning', t: warnTime, warnTime, chip, label, bar, fixItem: null };
+    problem.fixItem = spawnItem('fix:' + def.id, { def: { emoji: def.fix.emoji, label: def.fix.label, station: def.station }, problem });
+    problem.fixItem.el.classList.add('fix');
+    state.problems.push(problem);
+    sfx('warn');
+    return true;
+  }
+
+  function triggerProblem(p) {
+    p.phase = 'live';
+    p.label.textContent = `${C.initiative.livePrefix} ${p.def.live} → ${p.def.fix.emoji}`;
+    p.bar.style.width = '0%';
+    const node = stationEls[p.station];
+    node.classList.remove('warn');
+    node.classList.add('live');
+    state.stats.triggered++;
+    toast(`${deptName(p.def.from)} → Tarteeb`, p.def.message);
+    sfx('alarm');
+    shake();
+  }
+
+  function resolveProblem(p) {
+    state.problems = state.problems.filter(x => x !== p);
+    p.chip.remove();
+    stationEls[p.station].classList.remove('warn', 'live');
+  }
+
+  function clearProblems() {
+    for (const p of state.problems.slice()) resolveProblem(p);
+  }
+
+  function updateProblems(dt) {
+    const r = rules();
+    if (r.problemEvery > 0) {
+      state.problemTimer -= dt;
+      if (state.problemTimer <= 0) {
+        if (state.problems.length < (r.maxProblems || 1)) spawnProblem();
+        state.problemTimer = r.problemEvery * rand(0.8, 1.2);
+      }
+    }
+    let live = 0;
+    for (const p of state.problems) {
+      if (p.phase === 'warning') {
+        p.t -= dt;
+        p.bar.style.width = `${clamp(p.t / p.warnTime, 0, 1) * 100}%`;
+        if (p.t <= 0) triggerProblem(p);
+      } else {
+        live++;
+      }
+    }
+    if (live) state.readiness = clamp(state.readiness - live * DRAIN_PER_PROBLEM * dt, 0, 100);
+  }
+
+  /* ================= RUNNER (Tarteeb is always moving) ================= */
+  function sendRunner(x, emoji) {
+    const w = el.runway.clientWidth;
+    state.runner.targetX = clamp(x - 15, 0, Math.max(0, w - 30));
+    state.runner.pause = 0;
+    if (emoji) el.runnerCarry.textContent = emoji;
+  }
+
+  function updateRunner(dt) {
+    const r = state.runner;
+    const w = el.runway.clientWidth;
+    if (r.pause > 0) { r.pause -= dt; return; }
+    const dx = r.targetX - r.x;
+    const speed = 210;
+    if (Math.abs(dx) < 2) {
+      r.pause = rand(0.05, 0.25);
+      r.targetX = rand(0, Math.max(0, w - 30));
+      const supplies = Object.values(C.supplies);
+      el.runnerCarry.textContent = pick(supplies).emoji;
+    } else {
+      r.dir = Math.sign(dx);
+      r.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * dt);
+    }
+    el.runner.style.transform = `translateX(${r.x}px) scaleX(${r.dir})`;
+    el.runnerCarry.style.transform = `translateX(-50%) scaleX(${r.dir})`;
+  }
+
+  /* ================= ACTIVITY TRACKER ================= */
+  function buildTicker() {
+    el.tickerTrack.replaceChildren();
+    // Two copies so the marquee loops seamlessly.
+    for (let copy = 0; copy < 2; copy++) {
+      for (const d of C.departments) {
+        const chip = h('span', 'ticker-chip');
+        chip.dataset.dept = d.id;
+        chip.append(h('b', '', d.name), h('span', 'ticker-status', pick(C.tracker.statuses)));
+        el.tickerTrack.appendChild(chip);
+      }
+    }
+    el.trackerName.textContent = C.tracker.tarteebLabel;
+  }
+
+  function updateTicker(dt) {
+    state.tickerTimer -= dt;
+    if (state.tickerTimer > 0) return;
+    state.tickerTimer = rand(1.2, 2.6);
+    const d = pick(C.departments);
+    const status = pick(C.tracker.statuses);
+    el.tickerTrack.querySelectorAll(`.ticker-chip[data-dept="${d.id}"]`).forEach(chip => {
+      chip.querySelector('.ticker-status').textContent = status;
+      chip.classList.remove('flip'); void chip.offsetWidth; chip.classList.add('flip');
+    });
+  }
+
+  function addActivity(n) { state.activity += n; }
+
+  /* ================= SOUND (stub until Phase 4) ================= */
+  function sfx() {}
+
   /* ================= DELIVERY ================= */
   function deliver(item, stationId) {
     clearSelection();
     const c = stationCenter(stationId);
-    if (item.station === stationId) {
+    if (item.station === stationId && item.problem) {
       removeItem(item, c);
+      const p = item.problem;
+      const early = p.phase === 'warning';
+      resolveProblem(p);
+      state.combo++;
+      state.stats.maxCombo = Math.max(state.stats.maxCombo, state.combo);
+      const pts = early ? POINTS.prevent : POINTS.fix;
+      addScore(pts);
+      bumpStation(stationId, 'hit');
+      sendRunner(c.x, item.problem.def.fix.emoji);
+      if (early) {
+        state.stats.prevented++;
+        addActivity(ACTIVITY.prevent);
+        banner(C.initiative.banner, `+${pts} · ×2`);
+        sfx('prevent');
+      } else {
+        state.stats.lateFixes++;
+        addActivity(ACTIVITY.fix);
+        flash(`${C.initiative.lateFix} +${pts}`, c.x, c.y - 10, 'good');
+        sfx('deliver');
+      }
+      addReadiness(100 / rules().target);
+    } else if (item.station === stationId) {
+      removeItem(item, c);
+      addActivity(ACTIVITY.deliver);
+      sendRunner(c.x, (C.supplies[item.type] || {}).emoji);
+      sfx('deliver');
       state.combo++;
       state.stats.delivered++;
       state.stats.maxCombo = Math.max(state.stats.maxCombo, state.combo);
@@ -350,6 +639,7 @@
       state.timeLeft = Math.max(0, state.timeLeft - POINTS.wrongTime);
       flash(`${C.ui.wrongStation} −${POINTS.wrongTime}s`, c.x, c.y - 10, 'bad');
       bumpStation(stationId, 'miss');
+      sfx('wrong');
       shake();
     }
   }
@@ -357,6 +647,12 @@
   /* ================= INPUT (pointer events only) ================= */
   function onPointerDown(e) {
     if (!state.running || state.paused || state.drag) return;
+    const junkNode = e.target.closest('.junk');
+    if (junkNode) {
+      const j = state.junk.find(x => x.el === junkNode);
+      if (j) { e.preventDefault(); catchJunk(j); }
+      return;
+    }
     const itemNode = e.target.closest('.item');
     if (itemNode) {
       const item = state.items.find(i => i.el === itemNode);
@@ -415,6 +711,7 @@
   /* ================= LEVEL FLOW ================= */
   function startRun() {
     state.score = 0;
+    state.activity = 0;
     state.levelIndex = 0;
     setScreen('game');
     showIntro();
@@ -439,9 +736,12 @@
     state.readiness = 0;
     state.combo = 0;
     state.spawnTimer = 0;
+    state.problemTimer = rules().problemFirst != null ? rules().problemFirst : 5;
+    state.junkTimer = (rules().junkEvery || 0) * rand(0.6, 1);
     state.levelStartScore = state.score;
     state.stats = freshStats();
     el.level.textContent = `${state.levelIndex + 1}. ${level().title}`;
+    resetNpcs();
     for (const id in stationEls) {
       stationEls[id].querySelector('.station-count').textContent = '';
       stationEls[id].classList.remove('armed', 'hover', 'hit', 'miss');
@@ -558,6 +858,21 @@
       spawnItem(weightedPick(r.supplies));
       state.spawnTimer = r.spawnEvery * rand(0.8, 1.25);
     }
+
+    updateProblems(dt);
+    if (!state.running) return;
+
+    if (r.junkEvery > 0) {
+      state.junkTimer -= dt;
+      if (state.junkTimer <= 0) {
+        const awake = state.npcs.filter(n => n.mood !== 'dinner');
+        if (awake.length) dropJunk(pick(awake));
+        state.junkTimer = r.junkEvery * rand(0.7, 1.3);
+      }
+    }
+    updateJunk(dt);
+    updateNpcs(dt);
+    addActivity(ACTIVITY.perSecond * dt);
   }
 
   const hudCache = {};
@@ -570,6 +885,14 @@
     setText(el.score, 'score', fmt(state.score));
     setText(el.timer, 'timer', String(Math.ceil(state.timeLeft)));
     el.timerWrap.classList.toggle('urgent', state.running && state.timeLeft <= 10);
+    const act = Math.floor(state.activity);
+    if (hudCache.act !== act) {
+      hudCache.act = act;
+      el.trackerCount.textContent = fmt(act);
+      const w = Math.min(100, 12 + act / 6);
+      el.trackerFill.style.width = `${w}%`;
+      el.trackerFill.classList.toggle('maxed', w >= 100);
+    }
     const pct = Math.floor(state.readiness);
     if (hudCache.pct !== pct) {
       hudCache.pct = pct;
@@ -582,7 +905,10 @@
     const dt = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
     lastTime = now;
     if (state.running && !state.paused) update(dt);
-    if (state.screen === 'game') renderHud(false);
+    if (state.screen === 'game') {
+      if (!state.paused) { updateRunner(dt); updateTicker(dt); }
+      renderHud(false);
+    }
     requestAnimationFrame(frame);
   }
 
@@ -602,6 +928,8 @@
   function boot() {
     fillStaticText();
     buildStations();
+    buildNpcs();
+    buildTicker();
     el.btnStart.addEventListener('click', startRun);
     el.btnPause.addEventListener('click', pause);
     el.arena.addEventListener('pointerdown', onPointerDown);

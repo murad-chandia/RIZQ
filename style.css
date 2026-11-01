@@ -212,6 +212,121 @@ button { font-family: inherit; }
 
 .shake { animation: shake .35s ease; }
 
+/* ================= ACTIVITY TRACKER ================= */
+.tracker { margin-top: 7px; }
+.tracker-tarteeb { display: flex; align-items: center; gap: 8px; }
+.tracker-name { font-size: 10px; font-weight: 900; color: var(--gold); text-transform: uppercase; letter-spacing: .1em; flex: none; }
+.tracker-bar { flex: 1; height: 8px; border-radius: 999px; background: var(--ink-3); overflow: hidden; }
+.tracker-fill { height: 100%; width: 10%; background: linear-gradient(90deg, var(--gold), var(--gold-hi)); border-radius: 999px; transition: width .4s ease; box-shadow: 0 0 10px rgba(201,162,39,.6); }
+.tracker-fill.maxed { background: repeating-linear-gradient(90deg, var(--gold) 0 10px, var(--gold-hi) 10px 20px); background-size: 40px 100%; animation: stripes .6s linear infinite; }
+.tracker-count { font-size: 11px; font-weight: 900; color: var(--gold-hi); font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; flex: none; }
+.ticker { margin-top: 5px; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.ticker-track { display: inline-flex; gap: 14px; animation: ticker 22s linear infinite; }
+.ticker-chip { font-size: 10px; font-weight: 600; color: var(--grey); flex: none; }
+.ticker-chip b { font-weight: 800; color: var(--grey-2); margin-right: 4px; }
+.ticker-chip.flip { animation: chipFlip .35s ease; }
+
+/* ================= NPCs ================= */
+#npcs {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 12px 0;
+  height: 62px;
+}
+.npc { position: relative; width: 40px; display: flex; flex-direction: column; align-items: center; }
+.npc-body {
+  width: 30px; height: 30px; border-radius: 50% 50% 44% 44%;
+  background: var(--grey-3); border: 1.5px solid var(--grey-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8.5px; font-weight: 800; color: var(--grey);
+  transition: transform .2s ease;
+}
+.npc.sleep .npc-body { transform: rotate(-12deg) translateY(2px); }
+.npc.drop .npc-body { animation: npcDrop .4s ease; }
+.npc.panic .npc-body { animation: panic .18s linear infinite; border-color: #7a3b3b; }
+.npc-bubble {
+  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+  background: var(--ink-3); border: 1px solid var(--line); color: var(--grey);
+  border-radius: 8px; padding: 1px 5px; font-size: 9px; font-weight: 700; white-space: nowrap; line-height: 1.35;
+}
+.npc.sleep .npc-bubble { animation: zzz 2s ease-in-out infinite; }
+.npc.typing .npc-bubble { font-size: 0; padding: 4px 6px; }
+.npc.typing .npc-bubble::after { content: ''; display: block; width: 18px; height: 4px; background: radial-gradient(circle, var(--grey) 1.6px, transparent 2px) 0 0 / 6px 4px repeat-x; animation: dots 1s steps(4) infinite; }
+.npc.panic .npc-bubble { color: var(--bad); border-color: #5a2b2b; }
+
+/* ================= RUNNER (Tarteeb) ================= */
+#runway { flex: none; position: relative; height: 34px; margin: 0 10px; }
+#runner { position: absolute; left: 0; bottom: 0; width: 30px; height: 34px; will-change: transform; }
+.runner-body {
+  position: absolute; bottom: 7px; left: 3px;
+  width: 24px; height: 20px; border-radius: 9px 9px 6px 6px;
+  background: var(--gold); color: var(--ink);
+  font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 12px rgba(201,162,39,.55);
+}
+.runner-legs { position: absolute; bottom: 0; left: 8px; width: 14px; height: 8px; }
+.runner-legs::before, .runner-legs::after { content: ''; position: absolute; top: 0; width: 3px; height: 8px; background: var(--gold-hi); border-radius: 2px; transform-origin: top center; animation: legs .28s ease-in-out infinite alternate; }
+.runner-legs::before { left: 2px; }
+.runner-legs::after { right: 2px; animation-direction: alternate-reverse; }
+.runner-carry { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 15px; animation: carryBob .28s ease-in-out infinite alternate; }
+
+/* ================= PROBLEMS ON STATIONS ================= */
+.station-alert {
+  position: absolute; left: 6px; right: 6px; top: -10px;
+  border-radius: 8px; padding: 3px 6px 5px;
+  font-size: 9.5px; font-weight: 800; line-height: 1.15; text-align: center;
+  overflow: hidden; z-index: 2;
+}
+.station-alert .alert-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: currentColor; opacity: .8; }
+.station.warn { border-color: var(--gold); animation: warnGlow .7s ease-in-out infinite alternate; }
+.station.warn .station-alert { background: var(--gold); color: var(--ink); }
+.station.live { border-color: var(--bad); background: #2a1415; }
+.station.live .station-alert { background: var(--bad); color: #fff; animation: pulse .45s ease-in-out infinite alternate; }
+
+.item.fix .item-inner { border-color: var(--gold-hi); background: linear-gradient(160deg, #4a3b0c, #1e1806); animation: fixGlow .7s ease-in-out infinite alternate; }
+.item.fix .item-label { color: var(--gold-hi); }
+
+/* ================= JUNK ================= */
+.junk {
+  position: absolute; left: 0; top: 0;
+  max-width: 128px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #2b2b2b; border: 1px solid #444; color: #b5b5b5;
+  font-size: 9.5px; font-weight: 700; line-height: 1.15;
+  display: flex; align-items: center; gap: 6px;
+  pointer-events: auto; z-index: 6;
+  box-shadow: 0 6px 14px rgba(0,0,0,.5);
+  will-change: transform;
+}
+.junk-emoji { font-size: 16px; flex: none; }
+.junk.caught { transition: opacity .2s ease, transform .2s ease; opacity: 0; }
+
+/* ================= TOASTS & BANNER ================= */
+#toasts { position: absolute; top: 64px; left: 10px; right: 10px; z-index: 8; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.toast {
+  align-self: flex-start; max-width: 92%;
+  background: #262626; border: 1px solid #3a3a3a; color: #d3d3d3;
+  border-radius: 4px 14px 14px 14px; padding: 7px 10px;
+  font-size: 11.5px; font-weight: 600; line-height: 1.3;
+  box-shadow: 0 8px 20px rgba(0,0,0,.5);
+  animation: toastIn .25s ease both;
+}
+.toast-from { display: block; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--grey); margin-bottom: 2px; }
+.toast.out { animation: toastOut .3s ease forwards; }
+.toast.chaos { align-self: stretch; max-width: none; border-radius: 12px; background: #3a0f12; border-color: var(--bad); color: #fff; font-weight: 800; text-align: center; }
+
+#banner { position: absolute; left: 0; right: 0; top: 38%; z-index: 9; display: flex; justify-content: center; pointer-events: none; }
+.banner-inner {
+  background: var(--gold); color: var(--ink);
+  padding: 10px 18px; border-radius: 12px;
+  font-size: 17px; font-weight: 900; text-transform: uppercase; letter-spacing: .02em; text-align: center;
+  box-shadow: 0 12px 40px rgba(201,162,39,.5);
+  animation: bannerIn 1.5s cubic-bezier(.2,1.3,.4,1) forwards;
+}
+.banner-inner small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+
 /* ================= OVERLAY CARD ================= */
 .overlay {
   position: absolute; inset: 0; z-index: 50;
@@ -259,6 +374,27 @@ button { font-family: inherit; }
 @keyframes stationMiss { 0%,100% { transform: translateX(0); } 30% { transform: translateX(-4px); border-color: var(--bad); } 70% { transform: translateX(4px); border-color: var(--bad); } }
 @keyframes pulse { from { opacity: 1; } to { opacity: .55; } }
 @keyframes cardIn { from { transform: translateY(18px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@keyframes stripes { to { background-position: 40px 0; } }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes chipFlip { 0% { opacity: .2; } 100% { opacity: 1; } }
+@keyframes npcDrop { 0%,100% { transform: translateY(0); } 40% { transform: translateY(5px) scale(1.1, .9); } }
+@keyframes panic { 0% { transform: translateX(-1.5px); } 50% { transform: translateX(1.5px); } 100% { transform: translateX(-1.5px); } }
+@keyframes zzz { 0%,100% { transform: translate(-50%, 0); opacity: .6; } 50% { transform: translate(-30%, -4px); opacity: 1; } }
+@keyframes dots { from { width: 0; } to { width: 24px; } }
+@keyframes legs { from { transform: rotate(-28deg); } to { transform: rotate(28deg); } }
+@keyframes carryBob { from { margin-top: 0; } to { margin-top: -2px; } }
+@keyframes warnGlow { from { box-shadow: 0 0 0 rgba(201,162,39,0); } to { box-shadow: 0 0 18px rgba(201,162,39,.65); } }
+@keyframes fixGlow { from { box-shadow: 0 0 0 rgba(230,192,74,0), 0 6px 14px rgba(0,0,0,.45); } to { box-shadow: 0 0 16px rgba(230,192,74,.8), 0 6px 14px rgba(0,0,0,.45); } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes bannerIn {
+  0% { transform: scale(.4) rotate(-6deg); opacity: 0; }
+  15% { transform: scale(1.08) rotate(-2deg); opacity: 1; }
+  25% { transform: scale(1) rotate(-2deg); }
+  80% { transform: scale(1) rotate(-2deg); opacity: 1; }
+  100% { transform: scale(.9) rotate(-2deg) translateY(-14px); opacity: 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .item-inner { animation: none !important; }
