@@ -16,6 +16,7 @@
 
     <!-- START SCREEN -->
     <section id="screen-start" class="screen active" aria-label="Start">
+      <button class="icon-btn mute-btn start-mute" type="button" aria-label="Mute sound">🔊</button>
       <div class="start-inner">
         <p class="kicker" data-text="meta.org"></p>
         <h1 class="logo"><span class="logo-a">Tarteeb</span><span class="logo-b">Rush</span></h1>
@@ -33,6 +34,7 @@
           <div class="hud-stat"><span class="hud-label">Score</span><span class="hud-value" id="hud-score">0</span></div>
           <div class="hud-level" id="hud-level"></div>
           <div class="hud-stat hud-timer"><span class="hud-label" id="hud-timer-label">Doors in</span><span class="hud-value" id="hud-timer">0</span></div>
+          <button class="icon-btn mute-btn" type="button" aria-label="Mute sound">🔊</button>
           <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause">⏸</button>
         </div>
         <div class="tracker" aria-label="Activity tracker">
@@ -62,6 +64,35 @@
       </div>
     </section>
 
+    <!-- END SCREEN: DEPARTMENT SHOWDOWN -->
+    <section id="screen-showdown" class="screen" aria-label="Department Showdown">
+      <div class="sd-inner">
+        <p class="kicker" data-text="showdown.kicker"></p>
+        <h2 class="sd-title" data-text="showdown.title"></h2>
+        <div class="sd-scorebox">
+          <span class="sd-label" data-text="showdown.scoreLabel"></span>
+          <span class="sd-score" id="sd-score">0</span>
+          <span class="sd-best" id="sd-best"></span>
+        </div>
+        <div class="sd-rankbox">
+          <span class="sd-label" data-text="showdown.rankLabel"></span>
+          <span class="sd-rank" id="sd-rank"></span>
+        </div>
+        <div class="chart">
+          <h3 class="chart-title" data-text="showdown.chartTitle"></h3>
+          <div id="chart"></div>
+          <p class="chart-foot" data-text="showdown.footnote"></p>
+        </div>
+        <p class="sd-final" data-text="showdown.finalLine"></p>
+        <div class="sd-actions">
+          <button class="btn btn-primary" id="btn-again" type="button" data-text="showdown.playAgain"></button>
+          <button class="btn btn-ghost" id="btn-share" type="button" data-text="showdown.challenge"></button>
+        </div>
+        <p class="share-status" id="share-status" aria-live="polite"></p>
+        <textarea class="share-fallback" id="share-fallback" readonly hidden rows="2" aria-label="Share text"></textarea>
+      </div>
+    </section>
+
     <!-- OVERLAY CARD (level intros, results, pause) -->
     <div id="overlay" class="overlay" hidden>
       <div class="card" role="dialog" aria-modal="true">
@@ -72,6 +103,7 @@
       </div>
     </div>
 
+    <div id="confetti" aria-hidden="true"></div>
   </div>
 
   <script src="content.js"></script>

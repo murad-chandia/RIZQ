@@ -29,6 +29,8 @@ window.TARTEEB_CONTENT = {
     playAgainButton: 'Play again',
     pausedTitle: 'Paused',
     pausedBody: 'Tarteeb never pauses. You may.',
+    mute: 'Mute sound',
+    unmute: 'Turn sound on',
     resumeButton: 'Resume',
     wrongStation: 'Wrong station',
     readiness: 'Venue Readiness',
@@ -283,6 +285,44 @@ window.TARTEEB_CONTENT = {
     { dept: 'Media & Design',    them: 'Took 400 photos of the event.',                    tarteeb: 'Is in none of them because Tarteeb was working.' },
     { dept: 'Executive Council', them: 'Approved the plan.',                               tarteeb: 'Executed it before the approval email arrived.' },
     { dept: 'Executive Council', them: '"Great work, team!"',                              tarteeb: 'The team was Tarteeb.' },
+  ],
+
+  /*
+   * END SCREEN: "Department Showdown".
+   */
+  showdown: {
+    kicker: 'Run complete',
+    title: 'Department Showdown',
+    scoreLabel: 'Final score',
+    newBest: 'New best!',
+    best: 'Best: {score}',
+    rankLabel: 'Your rank',
+    chartTitle: 'Official* Department Rankings',
+    footnote: '*Data collected and verified by Tarteeb.',
+    offChart: 'off the chart ↗',
+    categories: [
+      { key: 'activity',      label: 'Activity' },
+      { key: 'effectiveness', label: 'Effectiveness' },
+      { key: 'initiative',    label: 'Initiative' },
+      { key: 'fun',           label: 'Fun' },
+    ],
+    // What the other departments' bars say instead of a number.
+    otherStatuses: ['Loading...', 'Seen ✓✓', 'Will get back to you', 'Still discussing', 'Pending approval', 'Out of office'],
+    finalLine: 'Tarteeb: We don\'t wait for the plan. We are the plan.',
+    playAgain: 'Play Again',
+    challenge: 'Challenge another department',
+    shareText: 'I scored {score} in Tarteeb Rush. Your department couldn\'t.',
+    copied: 'Copied! Now send it to them.',
+    copyFailed: 'Couldn\'t copy automatically. Select the text below and copy it.',
+  },
+
+  // Rank titles by final score (lowest first). "min" = score needed.
+  ranks: [
+    { min: 0,     title: 'Volunteer' },
+    { min: 3000,  title: 'Chair Commander' },
+    { min: 6500,  title: 'Extension Cord Whisperer' },
+    { min: 10000, title: 'Crisis Prevention Specialist' },
+    { min: 14000, title: 'Director of Tarteeb' },
   ],
 
   failLines: [

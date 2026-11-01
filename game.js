@@ -49,7 +49,7 @@
       try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked */ }
     },
   };
-  const KEYS = { high: 'tarteebRush.highScore' };
+  const KEYS = { high: 'tarteebRush.highScore', muted: 'tarteebRush.muted' };
 
   /* ================= TUNING ================= */
   const POINTS = {
@@ -71,7 +71,19 @@
     screens: {
       start: $('#screen-start'),
       game: $('#screen-game'),
+      showdown: $('#screen-showdown'),
     },
+    muteBtns: document.querySelectorAll('.mute-btn'),
+    confetti: $('#confetti'),
+    sdScore: $('#sd-score'),
+    sdBest: $('#sd-best'),
+    sdRank: $('#sd-rank'),
+    chart: $('#chart'),
+    chartWrap: $('.chart'),
+    btnAgain: $('#btn-again'),
+    btnShare: $('#btn-share'),
+    shareStatus: $('#share-status'),
+    shareFallback: $('#share-fallback'),
     howto: $('#howto'),
     btnStart: $('#btn-start'),
     startBest: $('#start-best'),
@@ -136,10 +148,21 @@
     drag: null,
     highScore: store.get(KEYS.high, 0),
     stats: null,
+    run: null,
+    lastTick: 0,
   };
 
   function freshStats() {
     return { delivered: 0, wrong: 0, maxCombo: 0, prevented: 0, triggered: 0, lateFixes: 0, junkCaught: 0 };
+  }
+
+  function bankStats() {
+    if (!state.stats || !state.run) return;
+    for (const k in state.stats) {
+      if (k === 'maxCombo') state.run.maxCombo = Math.max(state.run.maxCombo, state.stats.maxCombo);
+      else state.run[k] += state.stats[k];
+    }
+    state.stats = freshStats();
   }
 
   const level = () => C.levels[state.levelIndex];
@@ -496,6 +519,7 @@
     state.timeLeft = Math.max(0, state.timeLeft - POINTS.junkTime);
     state.combo = 0;
     flash(fill(C.junkCaught, { label: j.def.label, s: POINTS.junkTime }), j.x + j.w / 2, j.y, 'bad');
+    sfx('junk');
     shake();
   }
 
@@ -639,8 +663,100 @@
 
   function addActivity(n) { state.activity += n; }
 
-  /* ================= SOUND (stub until Phase 4) ================= */
-  function sfx() {}
+  /* ================= SOUND (Web Audio, no files) ================= */
+  const audio = { ctx: null, master: null, muted: !!store.get(KEYS.muted, false) };
+
+  function initAudio() {
+    if (audio.ctx) {
+      if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
+      return;
+    }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      audio.ctx = new AC();
+      audio.master = audio.ctx.createGain();
+      audio.master.gain.value = 0.5;
+      audio.master.connect(audio.ctx.destination);
+    } catch (e) { audio.ctx = null; }
+  }
+
+  function tone(freq, dur, opt = {}) {
+    const ctx = audio.ctx;
+    if (!ctx || audio.muted) return;
+    const { type = 'sine', vol = 0.25, slide = 0, delay = 0 } = opt;
+    const t = ctx.currentTime + delay;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(audio.master);
+    o.start(t);
+    o.stop(t + dur + 0.03);
+  }
+
+  const arp = (notes, step, opt) => notes.forEach((f, i) => tone(f, opt.dur || 0.16, { ...opt, delay: i * step }));
+
+  const SFX = {
+    pick:    () => tone(620, 0.05, { type: 'triangle', vol: 0.12 }),
+    deliver: () => { tone(880, 0.08, { type: 'triangle', vol: 0.22 }); tone(1320, 0.1, { type: 'triangle', vol: 0.18, delay: 0.06 }); },
+    wrong:   () => tone(190, 0.22, { type: 'sawtooth', vol: 0.14, slide: -90 }),
+    warn:    () => { tone(1040, 0.07, { type: 'square', vol: 0.06 }); tone(1040, 0.07, { type: 'square', vol: 0.06, delay: 0.13 }); },
+    alarm:   () => tone(460, 0.32, { type: 'sawtooth', vol: 0.12, slide: -220 }),
+    prevent: () => arp([523, 659, 784, 1047], 0.07, { type: 'triangle', vol: 0.2, dur: 0.15 }),
+    junk:    () => tone(150, 0.2, { type: 'square', vol: 0.12, slide: -60 }),
+    chaos:   () => { tone(280, 0.2, { type: 'sawtooth', vol: 0.1, slide: 320 }); tone(600, 0.2, { type: 'sawtooth', vol: 0.1, slide: -320, delay: 0.16 }); },
+    clear:   () => arp([523, 659, 784, 1047, 1319], 0.08, { type: 'triangle', vol: 0.2, dur: 0.2 }),
+    fail:    () => arp([392, 330, 262], 0.16, { type: 'sawtooth', vol: 0.1, dur: 0.28 }),
+    tick:    () => tone(1250, 0.035, { type: 'square', vol: 0.05 }),
+    bar:     () => tone(rand(500, 900), 0.05, { type: 'triangle', vol: 0.07 }),
+    fanfare: () => arp([392, 523, 659, 784, 1047, 1319, 1568], 0.09, { type: 'triangle', vol: 0.2, dur: 0.24 }),
+  };
+
+  function sfx(name) {
+    const f = SFX[name];
+    if (f) { try { f(); } catch (e) { /* audio is optional */ } }
+  }
+
+  function renderMute() {
+    el.muteBtns.forEach(b => {
+      b.textContent = audio.muted ? '🔇' : '🔊';
+      b.classList.toggle('muted', audio.muted);
+      b.setAttribute('aria-label', audio.muted ? C.ui.unmute : C.ui.mute);
+      b.setAttribute('aria-pressed', String(audio.muted));
+    });
+  }
+
+  function toggleMute() {
+    audio.muted = !audio.muted;
+    store.set(KEYS.muted, audio.muted);
+    initAudio();
+    renderMute();
+    if (!audio.muted) sfx('pick');
+  }
+
+  /* ================= CONFETTI ================= */
+  function confetti(count = 70) {
+    const colors = ['#C9A227', '#E6C04A', '#F6F2E8', '#0E0E0E', '#8C6F12'];
+    const w = el.app.clientWidth;
+    for (let i = 0; i < count; i++) {
+      const c = h('span', 'confetto');
+      c.style.left = `${rand(0, w)}px`;
+      c.style.background = pick(colors);
+      c.style.setProperty('--dx', `${rand(-80, 80).toFixed(0)}px`);
+      c.style.setProperty('--rot', `${rand(-720, 720).toFixed(0)}deg`);
+      c.style.setProperty('--dur', `${rand(1.4, 2.4).toFixed(2)}s`);
+      c.style.animationDelay = `${rand(0, 0.35).toFixed(2)}s`;
+      if (Math.random() < 0.4) { c.style.width = '6px'; c.style.height = '6px'; c.style.borderRadius = '50%'; }
+      el.confetti.appendChild(c);
+      setTimeout(() => c.remove(), 3000);
+    }
+  }
 
   function bumpCount(stationId) {
     const node = stationEls[stationId];
@@ -753,6 +869,7 @@
       const p = toLocal(e);
       state.drag = { item, pid: e.pointerId, sx: p.x, sy: p.y, ox: p.x - item.x, oy: p.y - item.y, moved: false };
       item.el.classList.add('dragging');
+      sfx('pick');
       try { el.arena.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       return;
     }
@@ -802,9 +919,15 @@
 
   /* ================= LEVEL FLOW ================= */
   function startRun() {
+    initAudio();
     state.score = 0;
     state.activity = 0;
     state.levelIndex = 0;
+    state.run = { ...freshStats(), levelsCleared: 0 };
+    state.runStartHigh = state.highScore;
+    state.stats = null;
+    el.shareStatus.textContent = '';
+    el.shareFallback.hidden = true;
     setScreen('game');
     showIntro();
   }
@@ -838,6 +961,7 @@
     applyStations();
     el.timerLabel.textContent = level().timerLabel || 'Doors in';
     state.levelStartScore = state.score;
+    state.lastTick = 0;
     state.stats = freshStats();
     el.level.textContent = `${state.levelIndex + 1}. ${level().title}`;
     resetNpcs();
@@ -871,7 +995,12 @@
     const bonus = Math.ceil(state.timeLeft) * POINTS.timeBonus;
     addScore(bonus);
     const levelScore = state.score - state.levelStartScore;
+    const cleared = state.stats;
+    bankStats();
+    state.run.levelsCleared++;
     saveHigh();
+    sfx('clear');
+    confetti();
     const isLast = state.levelIndex >= C.levels.length - 1;
     showCard({
       kicker: fill(C.ui.levelClearedKicker, { n: state.levelIndex + 1 }),
@@ -879,14 +1008,14 @@
       body: [
         para(level().clearLine, 'card-quote'),
         scoreTable([
-          ...(state.stats.prevented ? [[C.ui.prevented, String(state.stats.prevented)]] : []),
+          ...(cleared.prevented ? [[C.ui.prevented, String(cleared.prevented)]] : []),
           [C.ui.timeBonus, `+${fmt(bonus)}`],
           [C.ui.levelScore, fmt(levelScore)],
           [C.ui.totalScore, fmt(state.score), 'total'],
         ]),
       ],
       buttons: isLast
-        ? [{ label: C.ui.continueButton, primary: true, onClick: finishRun }]
+        ? [{ label: C.ui.continueButton, primary: true, onClick: showShowdown }]
         : [{ label: C.ui.continueButton, primary: true, onClick: showRoast }],
     });
   }
@@ -917,17 +1046,6 @@
     el.overlay.querySelector('.card').classList.add('roast');
   }
 
-  // Replaced by the Department Showdown in Phase 4.
-  function finishRun() {
-    saveHigh();
-    showCard({
-      kicker: 'Run complete',
-      title: fmt(state.score),
-      body: para('Tarteeb: We don\'t wait for the plan. We are the plan.', 'card-quote'),
-      buttons: [{ label: C.ui.playAgainButton, primary: true, onClick: startRun }],
-    });
-  }
-
   function nextLevel() {
     state.levelIndex++;
     showIntro();
@@ -936,6 +1054,8 @@
   function levelFail() {
     state.running = false;
     clearSelection();
+    bankStats();
+    sfx('fail');
     shake();
     showCard({
       kicker: C.ui.levelFailedKicker,
@@ -955,11 +1075,139 @@
 
   function endRun() {
     state.running = false;
+    bankStats();
+    showShowdown();
+  }
+
+  /* ================= DEPARTMENT SHOWDOWN ================= */
+  function rankFor(score) {
+    let title = C.ranks[0].title;
+    for (const r of C.ranks) if (score >= r.min) title = r.title;
+    return title;
+  }
+
+  function tarteebValues() {
+    const r = state.run;
+    const attempts = r.delivered + r.wrong + r.prevented + r.lateFixes;
+    const effective = attempts ? Math.round(((attempts - r.wrong) / attempts) * 100) : 100;
+    return {
+      activity: `${fmt(state.activity)} actions`,
+      effectiveness: `${effective}% accurate`,
+      initiative: `${r.prevented} problem${r.prevented === 1 ? '' : 's'} prevented`,
+      fun: `best combo ×${r.maxCombo}`,
+    };
+  }
+
+  function buildChart() {
+    const S = C.showdown;
+    const values = tarteebValues();
+    el.chart.replaceChildren();
+    const fills = [];
+    S.categories.forEach((cat, gi) => {
+      const group = h('div', 'chart-group');
+      const head = h('div', 'chart-group-head');
+      head.append(h('span', 'chart-cat', cat.label), h('span', 'chart-val', values[cat.key] || ''));
+      group.appendChild(head);
+
+      const rows = [{ name: C.tracker.tarteebLabel, us: true }].concat(C.departments.map(d => ({ name: d.name })));
+      rows.forEach(row => {
+        const r = h('div', 'bar-row' + (row.us ? ' us' : ''));
+        const track = h('div', 'bar-track');
+        const f = h('div', 'bar-fill');
+        track.appendChild(f);
+        if (row.us) {
+          track.appendChild(h('span', 'bar-off', S.offChart));
+          fills.push({ node: f, width: `${rand(135, 160).toFixed(0)}%`, delay: gi * 0.35 });
+        } else {
+          const w = rand(2, 9);
+          const status = h('span', 'bar-status', pick(S.otherStatuses));
+          status.style.left = `calc(${w}% + 6px)`;
+          track.appendChild(status);
+          fills.push({ node: f, width: `${w.toFixed(1)}%`, delay: gi * 0.35 + 0.2 });
+        }
+        r.append(h('span', 'bar-name', row.name), track);
+        group.appendChild(r);
+      });
+      el.chart.appendChild(group);
+    });
+    return fills;
+  }
+
+  function showShowdown() {
+    state.running = false;
     clearItems();
-    saveHigh();
     hideCard();
+    const prevHigh = state.runStartHigh || 0;
+    saveHigh();
     renderBest();
-    setScreen('start');
+    const S = C.showdown;
+    el.sdScore.textContent = fmt(state.score);
+    const isNew = state.score > prevHigh && state.score > 0;
+    el.sdBest.textContent = isNew ? S.newBest : fill(S.best, { score: fmt(state.highScore) });
+    el.sdBest.classList.toggle('new', isNew);
+    el.sdRank.textContent = rankFor(state.score);
+    el.shareStatus.textContent = '';
+    el.shareStatus.classList.remove('err');
+    el.shareFallback.hidden = true;
+    el.chartWrap.classList.remove('go');
+    const fills = buildChart();
+    setScreen('showdown');
+    el.screens.showdown.scrollTop = 0;
+    sfx('fanfare');
+    // Animate bars on the next frame so the transitions run.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.chartWrap.classList.add('go');
+      fills.forEach(f => {
+        f.node.style.transitionDelay = `${f.delay}s`;
+        f.node.style.width = f.width;
+      });
+      C.showdown.categories.forEach((c, i) => setTimeout(() => sfx('bar'), 350 * i + 200));
+      if (state.score > 0) setTimeout(() => confetti(90), 1400);
+    }));
+  }
+
+  /* ================= SHARE (clipboard with fallbacks) ================= */
+  function legacyCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  async function share() {
+    const text = fill(C.showdown.shareText, { score: fmt(state.score) });
+    let ok = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      }
+    } catch (e) { ok = false; }
+    if (!ok) ok = legacyCopy(text);
+
+    el.shareStatus.classList.toggle('err', !ok);
+    if (ok) {
+      el.shareStatus.textContent = C.showdown.copied;
+      el.shareFallback.hidden = true;
+      sfx('deliver');
+    } else {
+      // Last resort: show the text so the player can copy it by hand.
+      el.shareStatus.textContent = C.showdown.copyFailed;
+      el.shareFallback.value = text;
+      el.shareFallback.hidden = false;
+      el.shareFallback.focus();
+      el.shareFallback.select();
+    }
   }
 
   function saveHigh() {
@@ -996,6 +1244,8 @@
   function update(dt) {
     state.timeLeft -= dt;
     if (state.timeLeft <= 0) { state.timeLeft = 0; levelFail(); return; }
+    const sec = Math.ceil(state.timeLeft);
+    if (sec <= 5 && sec !== state.lastTick) { state.lastTick = sec; sfx('tick'); }
 
     // Spawn supplies
     const r = rules();
@@ -1096,6 +1346,11 @@
     buildTicker();
     el.btnStart.addEventListener('click', startRun);
     el.btnPause.addEventListener('click', pause);
+    el.muteBtns.forEach(b => b.addEventListener('click', toggleMute));
+    el.btnAgain.addEventListener('click', startRun);
+    el.btnShare.addEventListener('click', share);
+    document.addEventListener('pointerdown', initAudio, { passive: true });
+    renderMute();
     el.arena.addEventListener('pointerdown', onPointerDown);
     el.arena.addEventListener('pointermove', onPointerMove);
     el.arena.addEventListener('pointerup', onPointerUp);
