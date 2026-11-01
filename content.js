@@ -35,7 +35,13 @@ window.TARTEEB_CONTENT = {
     levelClearedKicker: 'Level {n} cleared',
     levelFailedKicker: 'Doors opened',
     levelFailedTitle: 'Venue only {pct}% ready',
+    continueButton: 'Continue',
+    counted: 'Counted {n}/{total}',
     timeBonus: 'Time bonus',
+    prevented: 'Problems prevented',
+    roastKicker: 'Meanwhile, in other departments',
+    roastTarteeb: 'Tarteeb',
+    chaosPrefix: 'CHAOS',
     levelScore: 'Level score',
     totalScore: 'Total score',
   },
@@ -59,29 +65,111 @@ window.TARTEEB_CONTENT = {
     standee:  { emoji: '🪧', label: 'Standee',         station: 'registration' },
     desk:     { emoji: '🗃️', label: 'Reg. desk',       station: 'registration' },
     badges:   { emoji: '🪪', label: 'Volunteer badges', station: 'registration' },
+    boxes:    { emoji: '📦', label: 'Donation boxes',  station: 'stage' },
+    vankeys:  { emoji: '🔑', label: 'Van keys',        station: 'stage' },
   },
+
+  // Level 5 only: everything goes here.
+  storage: { name: 'Storage', icon: '📦' },
 
   /*
    * LEVELS. Each level is one object: text on top, tuning numbers in "rules".
-   * rules.duration  = seconds on the clock
-   * rules.target    = correct deliveries needed for 100% readiness
-   * rules.maxItems  = most supplies on screen at once
-   * rules.spawnEvery= seconds between new supplies
-   * rules.supplies  = which supplies appear, and how often (bigger number = more often)
-   * rules.problemEvery = seconds between new problems (0 = none)
-   * rules.warnTime  = seconds a problem glows before it triggers
-   * rules.maxProblems = most problems at once
-   * rules.junkEvery = seconds between NPCs dropping useless items (0 = none)
+   * To add a level, copy one whole { ... } block, paste it where you want it, and edit it.
+   *
+   * Text:
+   *   title, intro (shown before the level), clearLine (shown after clearing it)
+   *   timerLabel   = label above the countdown
+   *   stationNames = optional renames for this level, e.g. { stage: { name: 'Loading Bay', icon: '🚐' } }
+   *   seatCounter  = optional, text on the Seating station ({n} = chairs placed)
+   *   messages     = optional messages that pop up during the level
+   *
+   * Rules:
+   *   mode         = 'setup' (deliver to stations) or 'dismantle' (collect everything into Storage)
+   *   duration     = seconds on the clock
+   *   target       = correct deliveries for 100% (setup) / total items to count (dismantle)
+   *   maxItems     = most supplies on screen at once
+   *   spawnEvery   = seconds between new supplies
+   *   supplies     = which supplies appear, and how often (bigger number = more often)
+   *   problems     = which problems can happen (ids from the PROBLEMS list below)
+   *   problemEvery = seconds between new problems (0 = none)
+   *   warnTime     = seconds a problem glows before it triggers
+   *   maxProblems  = most problems at once
+   *   junkEvery    = seconds between NPCs dropping useless items (0 = none)
+   *   chaosEvery   = seconds between chaos events (0 = none); chaos = which effects can happen
+   *   npcMoods     = what the department NPCs do during this level
    */
   levels: [
     {
       title: 'Orientation Session',
       intro: 'Events said it\'s a small session. It is not a small session.',
       clearLine: 'Small session. Big setup. Done.',
+      timerLabel: 'Doors in',
       rules: {
-        duration: 45, target: 10, maxItems: 5, spawnEvery: 0.8,
+        mode: 'setup', duration: 45, target: 10, maxItems: 5, spawnEvery: 0.8,
         supplies: { chairs: 3, water: 2, banner: 1, standee: 1, desk: 1, sound: 1 },
+        problems: ['mic', 'vendor', 'guests', 'cord'],
         problemEvery: 11, warnTime: 6, maxProblems: 1, junkEvery: 9,
+      },
+    },
+    {
+      title: 'Panel Discussion',
+      intro: 'Marketing promised 300 attendees. Tarteeb has to find 300 chairs.',
+      clearLine: '300 chairs. In rows. Facing the right way.',
+      timerLabel: 'Doors in',
+      seatCounter: '{n}/300',
+      rules: {
+        mode: 'setup', duration: 50, target: 14, maxItems: 6, spawnEvery: 0.7, chairsPer: 25,
+        supplies: { chairs: 7, sound: 1, water: 1, standee: 1, desk: 1, cord: 1 },
+        problems: ['mic', 'seats', 'cord', 'booking'],
+        problemEvery: 9, warnTime: 5.5, maxProblems: 2, junkEvery: 7,
+      },
+    },
+    {
+      title: 'Charity Drive',
+      intro: 'Projects had the idea. Tarteeb has the boxes, the vans and the volunteers.',
+      clearLine: 'Van loaded. Boxes counted. The idea now physically exists.',
+      timerLabel: 'Van leaves in',
+      stationNames: { stage: { name: 'Loading Bay', icon: '🚐' } },
+      rules: {
+        mode: 'setup', duration: 50, target: 14, maxItems: 6, spawnEvery: 0.7,
+        supplies: { boxes: 4, vankeys: 1, badges: 3, water: 2, tables: 1, chairs: 1 },
+        problems: ['van', 'vendor', 'guests', 'seats'],
+        problemEvery: 9, warnTime: 5.5, maxProblems: 2, junkEvery: 7,
+        chaosEvery: 20, chaos: ['rush', 'junkStorm'],
+      },
+    },
+    {
+      title: 'Flagship Event',
+      intro: 'Every department is panicking at once. Tarteeb is not.',
+      clearLine: 'Flagship delivered. Everyone else is posting about it.',
+      timerLabel: 'Doors in',
+      rules: {
+        mode: 'setup', duration: 60, target: 18, maxItems: 7, spawnEvery: 0.6,
+        supplies: { chairs: 3, tables: 1, water: 2, banner: 1, cord: 1, sound: 1, standee: 1, desk: 1, badges: 1 },
+        problems: ['mic', 'vendor', 'booking', 'cord', 'guests', 'seats'],
+        problemEvery: 6, warnTime: 5, maxProblems: 3, junkEvery: 4, problemFirst: 3,
+        chaosEvery: 9, chaosFirst: 6, chaos: ['timeCut', 'shuffle', 'junkStorm', 'blackout', 'rush', 'problems'],
+        npcMoods: ['panic'],
+      },
+    },
+    {
+      title: 'Boss: Dismantling',
+      intro: 'Everyone left for dinner. Return and count every item before security locks the venue.',
+      clearLine: 'Every item counted. Venue empty. Security impressed.',
+      timerLabel: 'Lockup in',
+      messages: [
+        { from: 'exec',      text: 'Is it done? (sent from dinner)' },
+        { from: 'events',    text: 'Great event guys!! (has left the building)' },
+        { from: 'hr',        text: 'Who\'s on dismantling duty? Asking for a spreadsheet.' },
+        { from: 'marketing', text: 'Recap post is live! Tarteeb is still carrying chairs.' },
+        { from: 'media',     text: 'Uploading 400 photos. ETA: eventually.' },
+        { from: 'projects',  text: 'What if next time we... also helped?' },
+      ],
+      rules: {
+        mode: 'dismantle', duration: 45, target: 18, maxItems: 8, startItems: 8, spawnEvery: 1.2,
+        supplies: { chairs: 4, tables: 2, water: 1, banner: 1, cord: 2, sound: 1, standee: 1, desk: 1, badges: 1 },
+        problemEvery: 0, junkEvery: 0, messageEvery: 7, drift: 26,
+        npcMoods: ['dinner'],
       },
     },
   ],
@@ -142,6 +230,9 @@ window.TARTEEB_CONTENT = {
     { id: 'guests', warn: 'Guest list changed', live: 'Wrong guest list at the desk', station: 'registration',
       fix: { emoji: '📋', label: 'Updated list' },
       from: 'hr', message: 'oh the list changed yesterday, did nobody tell Tarteeb?' },
+    { id: 'van', warn: 'Van driver not answering', live: 'No van. Boxes going nowhere.', station: 'stage',
+      fix: { emoji: '🚐', label: 'Backup van' },
+      from: 'projects', message: 'the van is a logistics thing, right? Tarteeb?' },
     { id: 'seats', warn: 'Running short on seats', live: 'People standing at the back', station: 'seating',
       fix: { emoji: '🪑', label: 'Chair stack' },
       from: 'projects', message: 'what if... more chairs? Tarteeb thoughts?' },
@@ -159,6 +250,40 @@ window.TARTEEB_CONTENT = {
     warnPrefix: '⚠',
     livePrefix: '🔥',
   },
+
+  /*
+   * CHAOS EVENTS (Levels 3 and 4). "effect" must be one of:
+   *   timeCut (clock loses seconds), shuffle (stations move), junkStorm (everyone drops junk),
+   *   blackout (lights dim), rush (extra supplies arrive at once), problems (two problems at once)
+   */
+  chaos: [
+    { effect: 'timeCut',   from: 'marketing', text: 'Posted the start time 30 minutes early. Guests are arriving now.' },
+    { effect: 'shuffle',   from: 'exec',      text: 'Requested a "small" layout change. Every station moved.' },
+    { effect: 'junkStorm', from: 'hr',        text: 'Sent everyone a calendar invite. Six of them.' },
+    { effect: 'blackout',  from: 'media',     text: 'Turned the lights down "for the vibe".' },
+    { effect: 'rush',      from: 'events',    text: '"Oh, also, these just arrived."' },
+    { effect: 'problems',  from: 'projects',  text: 'Added three new ideas to the event. Today.' },
+  ],
+  chaosTimeCut: 5,
+
+  /*
+   * ROAST CARDS. One is shown at random between levels.
+   * "dept" must match a department name; "them" is their side; "tarteeb" is the punchline (can be empty).
+   */
+  roasts: [
+    { dept: 'Events',            them: '"We\'ll finalize the venue tomorrow."',         tarteeb: 'Booked it last week.' },
+    { dept: 'Events',            them: 'Planned the event.',                               tarteeb: 'Made it physically exist.' },
+    { dept: 'HR',                them: 'Scheduled a meeting about the volunteer shortage.', tarteeb: 'Deployed 20 volunteers during the meeting.' },
+    { dept: 'HR',                them: 'Made a spreadsheet to track who\'s active.',       tarteeb: 'Was the whole spreadsheet.' },
+    { dept: 'Marketing',         them: '"BIG ANNOUNCEMENT COMING SOON 👀" (week 4)',      tarteeb: 'The venue has been ready since week 2.' },
+    { dept: 'Marketing',         them: 'Promised free food in the caption.',              tarteeb: 'Found out from the caption.' },
+    { dept: 'Projects',          them: 'Currently in Phase 7 of the ideation phase.',     tarteeb: '' },
+    { dept: 'Projects',          them: '"What if we did something impactful?"',          tarteeb: 'Already loading the van.' },
+    { dept: 'Media & Design',    them: 'Final_FINAL_v9_REAL_use_this.png',                 tarteeb: 'Printed v3 and hung it straight.' },
+    { dept: 'Media & Design',    them: 'Took 400 photos of the event.',                    tarteeb: 'Is in none of them because Tarteeb was working.' },
+    { dept: 'Executive Council', them: 'Approved the plan.',                               tarteeb: 'Executed it before the approval email arrived.' },
+    { dept: 'Executive Council', them: '"Great work, team!"',                              tarteeb: 'The team was Tarteeb.' },
+  ],
 
   failLines: [
     'Events: "It\'s fine, nobody noticed." Everybody noticed.',
