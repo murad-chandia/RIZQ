@@ -1,6 +1,8 @@
 /*
  * TARTEEB RUSH: ALL GAME TEXT LIVES HERE.
  *
+ * Theme: Tarteeb is the coolest department in RIZQ, and every other department is quietly jealous.
+ *
  * You can edit jokes, level intros, roast cards and messages in this file
  * without touching game.js. Rules:
  *   - Keep the quotes and commas exactly as they are around each line.
@@ -12,40 +14,46 @@ window.TARTEEB_CONTENT = {
   meta: {
     title: 'Tarteeb Rush',
     org: 'RIZQ Society · Logistics Department',
-    tagline: 'The doors open soon. Everyone else is still discussing it.',
+    tagline: 'The coolest department in RIZQ. Everyone else is just jealous.',
   },
 
   ui: {
-    startButton: 'Start setting up',
+    startButton: 'Show them how it\'s done',
     howTo: [
-      'Drag each supply to its station. Or tap it, then tap the station.',
-      'Fill Venue Readiness to 100% before the doors open.',
+      'Every level plays differently. Read the one-line brief before it starts.',
+      'Combos make the other departments jealous. Jealousy is points.',
+      'Ignore their distractions. Touching one costs time.',
     ],
     highScore: 'Best: {score}',
-    goButton: 'Doors open soon. Go',
+    goButton: 'Go',
     nextButton: 'Next level',
+    startLevel: 'Start Level {n}',
+    resultsButton: 'See the showdown',
     retryButton: 'Retry level',
     endRunButton: 'End run',
     playAgainButton: 'Play again',
     pausedTitle: 'Paused',
-    pausedBody: 'Tarteeb never pauses. You may.',
+    pausedBody: 'Even the coolest department takes a breather. Briefly.',
     mute: 'Mute sound',
     unmute: 'Turn sound on',
     resumeButton: 'Resume',
     wrongStation: 'Wrong station',
     readiness: 'Venue Readiness',
     levelClearedKicker: 'Level {n} cleared',
-    levelFailedKicker: 'Doors opened',
+    levelFailedKicker: 'Time\'s up',
     levelFailedTitle: 'Venue only {pct}% ready',
-    continueButton: 'Continue',
     counted: 'Counted {n}/{total}',
     timeBonus: 'Time bonus',
     prevented: 'Problems prevented',
-    roastKicker: 'Meanwhile, in other departments',
+    jealousyCaused: 'Jealousy caused',
+    roastKicker: 'Overheard in other departments',
     roastTarteeb: 'Tarteeb',
+    upNext: 'Up next · Level {n}',
     chaosPrefix: 'CHAOS',
     levelScore: 'Level score',
     totalScore: 'Total score',
+    hype: 'JEALOUSY +1',
+    tapHint: 'TAP',
   },
 
   // Where things go. "id" is used by game.js, so don't rename ids; names and icons are safe to edit.
@@ -58,17 +66,17 @@ window.TARTEEB_CONTENT = {
 
   // Supplies. "station" must match a station id above.
   supplies: {
-    chairs:   { emoji: '🪑', label: 'Chairs',          station: 'seating' },
-    tables:   { emoji: '🍽️', label: 'Tables',          station: 'refreshments' },
-    water:    { emoji: '💧', label: 'Water',           station: 'refreshments' },
-    banner:   { emoji: '🎏', label: 'Banner',          station: 'stage' },
-    cord:     { emoji: '🔌', label: 'Extension cord',  station: 'stage' },
-    sound:    { emoji: '🔊', label: 'Sound system',    station: 'stage' },
-    standee:  { emoji: '🪧', label: 'Standee',         station: 'registration' },
-    desk:     { emoji: '🗃️', label: 'Reg. desk',       station: 'registration' },
+    chairs:   { emoji: '🪑', label: 'Chairs',           station: 'seating' },
+    tables:   { emoji: '🍽️', label: 'Tables',           station: 'refreshments' },
+    water:    { emoji: '💧', label: 'Water',            station: 'refreshments' },
+    banner:   { emoji: '🎏', label: 'Banner',           station: 'stage' },
+    cord:     { emoji: '🔌', label: 'Extension cord',   station: 'stage' },
+    sound:    { emoji: '🔊', label: 'Sound system',     station: 'stage' },
+    standee:  { emoji: '🪧', label: 'Standee',          station: 'registration' },
+    desk:     { emoji: '🗃️', label: 'Reg. desk',        station: 'registration' },
     badges:   { emoji: '🪪', label: 'Volunteer badges', station: 'registration' },
-    boxes:    { emoji: '📦', label: 'Donation boxes',  station: 'stage' },
-    vankeys:  { emoji: '🔑', label: 'Van keys',        station: 'stage' },
+    boxes:    { emoji: '📦', label: 'Donation boxes',   station: 'stage' },
+    vankeys:  { emoji: '🔑', label: 'Van keys',         station: 'stage' },
   },
 
   // Level 5 only: everything goes here.
@@ -79,24 +87,29 @@ window.TARTEEB_CONTENT = {
    * To add a level, copy one whole { ... } block, paste it where you want it, and edit it.
    *
    * Text:
-   *   title, intro (shown before the level), clearLine (shown after clearing it)
+   *   title, intro (the one-line brief), howTo (one line on how this level plays), clearLine
    *   timerLabel   = label above the countdown
    *   stationNames = optional renames for this level, e.g. { stage: { name: 'Loading Bay', icon: '🚐' } }
    *   seatCounter  = optional, text on the Seating station ({n} = chairs placed)
    *   messages     = optional messages that pop up during the level
    *
    * Rules:
-   *   mode         = 'setup' (deliver to stations) or 'dismantle' (collect everything into Storage)
+   *   mode         = 'setup'     drag supplies to stations
+   *                  'tap'       tap supplies; they fly to their station by themselves (fast and frantic)
+   *                  'conveyor'  supplies slide past on a belt; grab them before they leave
+   *                  'dismantle' collect drifting items into Storage
    *   duration     = seconds on the clock
-   *   target       = correct deliveries for 100% (setup) / total items to count (dismantle)
+   *   target       = deliveries for 100% (or total items to count when dismantling)
    *   maxItems     = most supplies on screen at once
    *   spawnEvery   = seconds between new supplies
+   *   life         = 'tap' mode only: seconds before an untapped supply disappears
+   *   beltSpeed    = 'conveyor' mode only: pixels per second
    *   supplies     = which supplies appear, and how often (bigger number = more often)
    *   problems     = which problems can happen (ids from the PROBLEMS list below)
    *   problemEvery = seconds between new problems (0 = none)
    *   warnTime     = seconds a problem glows before it triggers
    *   maxProblems  = most problems at once
-   *   junkEvery    = seconds between NPCs dropping useless items (0 = none)
+   *   junkEvery    = seconds between NPCs dropping distractions (0 = none)
    *   chaosEvery   = seconds between chaos events (0 = none); chaos = which effects can happen
    *   npcMoods     = what the department NPCs do during this level
    */
@@ -104,73 +117,77 @@ window.TARTEEB_CONTENT = {
     {
       title: 'Orientation Session',
       intro: 'Events said it\'s a small session. It is not a small session.',
-      clearLine: 'Small session. Big setup. Done.',
+      howTo: 'Drag each supply to its station, or tap it and then tap the station.',
+      clearLine: 'Small session. Big setup. The freshers already want to join Tarteeb.',
       timerLabel: 'Doors in',
       rules: {
-        mode: 'setup', duration: 45, target: 10, maxItems: 5, spawnEvery: 0.8,
-        supplies: { chairs: 3, water: 2, banner: 1, standee: 1, desk: 1, sound: 1 },
+        mode: 'setup', duration: 40, target: 8, maxItems: 5, spawnEvery: 0.8,
+        supplies: { chairs: 2, water: 2, banner: 1, standee: 1, desk: 1, sound: 1 },
         problems: ['mic', 'vendor', 'guests', 'cord'],
-        problemEvery: 11, warnTime: 6, maxProblems: 1, junkEvery: 9,
+        problemEvery: 10, warnTime: 6, maxProblems: 1, problemFirst: 6, junkEvery: 10,
       },
     },
     {
       title: 'Panel Discussion',
       intro: 'Marketing promised 300 attendees. Tarteeb has to find 300 chairs.',
-      clearLine: '300 chairs. In rows. Facing the right way.',
-      timerLabel: 'Doors in',
+      howTo: 'Chair Rush: just TAP chairs. They fly to Seating by themselves. Don\'t tap the distractions.',
+      clearLine: '300 chairs in 25 seconds. Marketing is "not impressed" (very impressed).',
+      timerLabel: 'Panel in',
       seatCounter: '{n}/300',
       rules: {
-        mode: 'setup', duration: 50, target: 14, maxItems: 6, spawnEvery: 0.7, chairsPer: 25,
-        supplies: { chairs: 7, sound: 1, water: 1, standee: 1, desk: 1, cord: 1 },
-        problems: ['mic', 'seats', 'cord', 'booking'],
-        problemEvery: 9, warnTime: 5.5, maxProblems: 2, junkEvery: 7,
+        mode: 'tap', duration: 25, target: 12, maxItems: 7, spawnEvery: 0.45, life: 2.6, chairsPer: 25,
+        supplies: { chairs: 1 },
+        problemEvery: 0, junkEvery: 2.2, junkSpeed: 95,
+        npcMoods: ['stare', 'jealous'],
       },
     },
     {
       title: 'Charity Drive',
       intro: 'Projects had the idea. Tarteeb has the boxes, the vans and the volunteers.',
-      clearLine: 'Van loaded. Boxes counted. The idea now physically exists.',
+      howTo: 'Conveyor: supplies slide past on a belt. Grab them before they leave the screen.',
+      clearLine: 'Van loaded. Projects is drafting an idea called "be more like Tarteeb".',
       timerLabel: 'Van leaves in',
       stationNames: { stage: { name: 'Loading Bay', icon: '🚐' } },
       rules: {
-        mode: 'setup', duration: 50, target: 14, maxItems: 6, spawnEvery: 0.7,
+        mode: 'conveyor', duration: 45, target: 12, maxItems: 7, spawnEvery: 1.0, beltSpeed: 70,
         supplies: { boxes: 4, vankeys: 1, badges: 3, water: 2, tables: 1, chairs: 1 },
         problems: ['van', 'vendor', 'guests', 'seats'],
-        problemEvery: 9, warnTime: 5.5, maxProblems: 2, junkEvery: 7,
-        chaosEvery: 20, chaos: ['rush', 'junkStorm'],
+        problemEvery: 11, warnTime: 7, maxProblems: 1, problemFirst: 8, junkEvery: 8,
       },
     },
     {
       title: 'Flagship Event',
       intro: 'Every department is panicking at once. Tarteeb is not.',
-      clearLine: 'Flagship delivered. Everyone else is posting about it.',
+      howTo: 'Everything at once: drag supplies, fix the glowing problems early, survive the chaos.',
+      clearLine: 'Flagship delivered. Four departments just asked to "collab" with Tarteeb.',
       timerLabel: 'Doors in',
       rules: {
-        mode: 'setup', duration: 60, target: 18, maxItems: 7, spawnEvery: 0.6,
+        mode: 'setup', duration: 55, target: 16, maxItems: 7, spawnEvery: 0.6,
         supplies: { chairs: 3, tables: 1, water: 2, banner: 1, cord: 1, sound: 1, standee: 1, desk: 1, badges: 1 },
         problems: ['mic', 'vendor', 'booking', 'cord', 'guests', 'seats'],
-        problemEvery: 6, warnTime: 5, maxProblems: 3, junkEvery: 4, problemFirst: 3,
-        chaosEvery: 9, chaosFirst: 6, chaos: ['timeCut', 'shuffle', 'junkStorm', 'blackout', 'rush', 'problems'],
-        npcMoods: ['panic'],
+        problemEvery: 7, warnTime: 5.5, maxProblems: 2, junkEvery: 5, problemFirst: 4,
+        chaosEvery: 10, chaosFirst: 7, chaos: ['timeCut', 'shuffle', 'junkStorm', 'blackout', 'rush', 'problems'],
+        npcMoods: ['panic', 'stare'],
       },
     },
     {
       title: 'Boss: Dismantling',
       intro: 'Everyone left for dinner. Return and count every item before security locks the venue.',
-      clearLine: 'Every item counted. Venue empty. Security impressed.',
+      howTo: 'Items are wandering around. Drag every single one into Storage.',
+      clearLine: 'Every item counted. Even security asked how to join Tarteeb.',
       timerLabel: 'Lockup in',
       messages: [
-        { from: 'exec',      text: 'Is it done? (sent from dinner)' },
+        { from: 'exec',      text: 'Is it done? Also, are Tarteeb hoodies available in medium?' },
         { from: 'events',    text: 'Great event guys!! (has left the building)' },
         { from: 'hr',        text: 'Who\'s on dismantling duty? Asking for a spreadsheet.' },
-        { from: 'marketing', text: 'Recap post is live! Tarteeb is still carrying chairs.' },
-        { from: 'media',     text: 'Uploading 400 photos. ETA: eventually.' },
-        { from: 'projects',  text: 'What if next time we... also helped?' },
+        { from: 'marketing', text: 'Posted the recap. Cropped Tarteeb out. Engagement dropped 80%.' },
+        { from: 'media',     text: 'Can Tarteeb pose with a chair for the after-movie? Asking for "reasons".' },
+        { from: 'projects',  text: 'What if next time we... also looked that cool?' },
       ],
       rules: {
-        mode: 'dismantle', duration: 45, target: 18, maxItems: 8, startItems: 8, spawnEvery: 1.2,
+        mode: 'dismantle', duration: 40, target: 14, maxItems: 8, startItems: 8, spawnEvery: 1.2,
         supplies: { chairs: 4, tables: 2, water: 1, banner: 1, cord: 2, sound: 1, standee: 1, desk: 1, badges: 1 },
-        problemEvery: 0, junkEvery: 0, messageEvery: 7, drift: 26,
+        problemEvery: 0, junkEvery: 0, messageEvery: 7, drift: 30,
         npcMoods: ['dinner'],
       },
     },
@@ -188,22 +205,38 @@ window.TARTEEB_CONTENT = {
     { id: 'exec',      name: 'Executive Council', short: 'EC'  },
   ],
 
-  // What the idle NPCs show above their heads.
+  // What the NPCs show above their heads.
   npcMoods: {
-    sleep:  'Zzz',
-    phone:  '📱',
-    typing: 'typing',
-    panic:  '!!',
-    dinner: '🍽️',
+    stare:   '👀',
+    jealous: '😒',
+    phone:   '📱',
+    typing:  'typing',
+    panic:   '!!',
+    dinner:  '🍽️',
   },
+  defaultMoods: ['stare', 'jealous', 'phone', 'typing'],
 
-  // Useless things NPCs drop. Touching one costs time.
+  /*
+   * JEALOUSY. Every 5-delivery combo makes all NPCs stare and one of them says something.
+   */
+  jealousLines: [
+    { from: 'events',    text: 'how is Tarteeb this fast 😑' },
+    { from: 'hr',        text: 'can we get volunteers to like US that much' },
+    { from: 'marketing', text: 'should we post this? no. yes. no.' },
+    { from: 'projects',  text: 'new idea: be Tarteeb' },
+    { from: 'media',     text: 'their setup looks better than our poster' },
+    { from: 'exec',      text: 'noted. (privately impressed)' },
+    { from: 'events',    text: 'we could\'ve done that. we didn\'t, but we could\'ve' },
+    { from: 'marketing', text: 'who gave Tarteeb a fan club??' },
+  ],
+
+  // Distractions jealous departments drop. Touching one costs time.
   junk: [
-    { emoji: '📝', label: 'Another Google Form' },
-    { emoji: '📅', label: 'Meeting invite: Discuss the discussion' },
-    { emoji: '✨', label: 'Motivational quote' },
-    { emoji: '🗳️', label: 'Poll: which font?' },
-    { emoji: '🔁', label: 'Reminder about the reminder' },
+    { emoji: '🤝', label: '"Collab?" (take credit)' },
+    { emoji: '📅', label: 'Meeting: why is Tarteeb so popular' },
+    { emoji: '📝', label: 'Google Form: rate Tarteeb (low)' },
+    { emoji: '📸', label: '"Pose for our post real quick"' },
+    { emoji: '❓', label: '"Quick question" (not quick)' },
   ],
   junkCaught: '{label}  −{s}s',
 
@@ -219,7 +252,7 @@ window.TARTEEB_CONTENT = {
   problems: [
     { id: 'mic', warn: 'Mic about to die', live: 'Mic died', station: 'stage',
       fix: { emoji: '🔋', label: 'Spare batteries' },
-      from: 'events', message: 'mic not working?? can someone from Tarteeb check 🙏' },
+      from: 'events', message: 'mic not working?? Tarteeb pls (we\'ll say we fixed it)' },
     { id: 'vendor', warn: 'Vendor stuck in traffic', live: 'No food. Vendor still stuck.', station: 'refreshments',
       fix: { emoji: '🛵', label: 'Backup vendor' },
       from: 'marketing', message: 'we kind of promised food in the caption. Tarteeb can you handle?' },
@@ -228,7 +261,7 @@ window.TARTEEB_CONTENT = {
       from: 'exec', message: 'Why are there two societies in the hall? Tarteeb please sort.' },
     { id: 'cord', warn: 'Extension cord missing', live: 'Projector has no power', station: 'stage',
       fix: { emoji: '🔌', label: 'Spare cord' },
-      from: 'media', message: 'our laptop died mid-slideshow. Does Tarteeb have a cord?' },
+      from: 'media', message: 'our laptop died mid-slideshow. Does Tarteeb have a cord? (they always do)' },
     { id: 'guests', warn: 'Guest list changed', live: 'Wrong guest list at the desk', station: 'registration',
       fix: { emoji: '📋', label: 'Updated list' },
       from: 'hr', message: 'oh the list changed yesterday, did nobody tell Tarteeb?' },
@@ -240,10 +273,10 @@ window.TARTEEB_CONTENT = {
       from: 'projects', message: 'what if... more chairs? Tarteeb thoughts?' },
   ],
 
-  // Top bar: Tarteeb's activity climbs; everyone else shows one of these.
+  // Top bar: Tarteeb's aura climbs; everyone else shows one of these.
   tracker: {
-    tarteebLabel: 'Tarteeb',
-    statuses: ['Loading...', 'Seen ✓✓', 'Will get back to you', 'typing...', 'In a meeting', 'Reacted 👍'],
+    tarteebLabel: 'Tarteeb aura',
+    statuses: ['Watching Tarteeb\'s story', 'Pretending not to care', 'Seen ✓✓', 'typing "how do they..."', 'Screenshotted it', 'Asking for the hoodie link'],
   },
 
   initiative: {
@@ -254,15 +287,15 @@ window.TARTEEB_CONTENT = {
   },
 
   /*
-   * CHAOS EVENTS (Levels 3 and 4). "effect" must be one of:
-   *   timeCut (clock loses seconds), shuffle (stations move), junkStorm (everyone drops junk),
+   * CHAOS EVENTS (Flagship). "effect" must be one of:
+   *   timeCut (clock loses seconds), shuffle (stations move), junkStorm (everyone drops distractions),
    *   blackout (lights dim), rush (extra supplies arrive at once), problems (two problems at once)
    */
   chaos: [
-    { effect: 'timeCut',   from: 'marketing', text: 'Posted the start time 30 minutes early. Guests are arriving now.' },
-    { effect: 'shuffle',   from: 'exec',      text: 'Requested a "small" layout change. Every station moved.' },
-    { effect: 'junkStorm', from: 'hr',        text: 'Sent everyone a calendar invite. Six of them.' },
-    { effect: 'blackout',  from: 'media',     text: 'Turned the lights down "for the vibe".' },
+    { effect: 'timeCut',   from: 'marketing', text: 'Moved the start time up so their post "goes live first".' },
+    { effect: 'shuffle',   from: 'exec',      text: 'Rearranged the layout to "add their touch". Every station moved.' },
+    { effect: 'junkStorm', from: 'hr',        text: 'Jealousy spike: everyone wants a "quick word" with Tarteeb.' },
+    { effect: 'blackout',  from: 'media',     text: 'Dimmed the lights so Tarteeb looks less cool. Didn\'t work.' },
     { effect: 'rush',      from: 'events',    text: '"Oh, also, these just arrived."' },
     { effect: 'problems',  from: 'projects',  text: 'Added three new ideas to the event. Today.' },
   ],
@@ -273,18 +306,18 @@ window.TARTEEB_CONTENT = {
    * "dept" must match a department name; "them" is their side; "tarteeb" is the punchline (can be empty).
    */
   roasts: [
-    { dept: 'Events',            them: '"We\'ll finalize the venue tomorrow."',         tarteeb: 'Booked it last week.' },
-    { dept: 'Events',            them: 'Planned the event.',                               tarteeb: 'Made it physically exist.' },
-    { dept: 'HR',                them: 'Scheduled a meeting about the volunteer shortage.', tarteeb: 'Deployed 20 volunteers during the meeting.' },
-    { dept: 'HR',                them: 'Made a spreadsheet to track who\'s active.',       tarteeb: 'Was the whole spreadsheet.' },
-    { dept: 'Marketing',         them: '"BIG ANNOUNCEMENT COMING SOON 👀" (week 4)',      tarteeb: 'The venue has been ready since week 2.' },
-    { dept: 'Marketing',         them: 'Promised free food in the caption.',              tarteeb: 'Found out from the caption.' },
-    { dept: 'Projects',          them: 'Currently in Phase 7 of the ideation phase.',     tarteeb: '' },
-    { dept: 'Projects',          them: '"What if we did something impactful?"',          tarteeb: 'Already loading the van.' },
-    { dept: 'Media & Design',    them: 'Final_FINAL_v9_REAL_use_this.png',                 tarteeb: 'Printed v3 and hung it straight.' },
-    { dept: 'Media & Design',    them: 'Took 400 photos of the event.',                    tarteeb: 'Is in none of them because Tarteeb was working.' },
-    { dept: 'Executive Council', them: 'Approved the plan.',                               tarteeb: 'Executed it before the approval email arrived.' },
-    { dept: 'Executive Council', them: '"Great work, team!"',                              tarteeb: 'The team was Tarteeb.' },
+    { dept: 'Events',            them: '"Why do the volunteers keep asking to join Tarteeb instead?"', tarteeb: 'Because we let them carry the speaker.' },
+    { dept: 'Events',            them: '"We\'ll finalize the venue tomorrow."',          tarteeb: 'Booked it last week.' },
+    { dept: 'HR',                them: 'Filed a complaint: "Tarteeb is having too much fun."', tarteeb: 'Complaint noted. Fun continued.' },
+    { dept: 'HR',                them: 'Made a spreadsheet to track who\'s active.',      tarteeb: 'Was the whole spreadsheet.' },
+    { dept: 'Marketing',         them: 'Posted a photo of Tarteeb\'s setup as their own content.', tarteeb: 'It got their best engagement of the year.' },
+    { dept: 'Marketing',         them: '"BIG ANNOUNCEMENT COMING SOON 👀" (week 4)',     tarteeb: 'The venue has been ready since week 2.' },
+    { dept: 'Projects',          them: 'Launched an initiative: "How to be more like Tarteeb." Currently in Phase 7 of ideation.', tarteeb: 'Step 1: show up. We\'ll wait.' },
+    { dept: 'Projects',          them: '"What if we did something impactful?"',         tarteeb: 'Already loading the van.' },
+    { dept: 'Media & Design',    them: 'Asked Tarteeb to pose for the poster.',           tarteeb: 'Too busy. The silhouette still looked cooler.' },
+    { dept: 'Media & Design',    them: 'Took 400 photos of the event.',                   tarteeb: 'Is in none of them because Tarteeb was working.' },
+    { dept: 'Executive Council', them: 'Wore a Tarteeb lanyard "by accident".',           tarteeb: 'Sure.' },
+    { dept: 'Executive Council', them: '"Great work, team!"',                             tarteeb: 'The team was Tarteeb.' },
   ],
 
   /*
@@ -292,26 +325,27 @@ window.TARTEEB_CONTENT = {
    */
   showdown: {
     kicker: 'Run complete',
-    title: 'Department Showdown',
+    title: 'Coolest Department Showdown',
     scoreLabel: 'Final score',
     newBest: 'New best!',
     best: 'Best: {score}',
     rankLabel: 'Your rank',
-    chartTitle: 'Official* Department Rankings',
-    footnote: '*Data collected and verified by Tarteeb.',
+    chartTitle: 'Official* Coolest Department Rankings',
+    footnote: '*Data collected and verified by Tarteeb. Other departments have requested a recount.',
     offChart: 'off the chart ↗',
     categories: [
-      { key: 'activity',      label: 'Activity' },
-      { key: 'effectiveness', label: 'Effectiveness' },
-      { key: 'initiative',    label: 'Initiative' },
-      { key: 'fun',           label: 'Fun' },
+      { key: 'cool',       label: 'Coolness' },
+      { key: 'aura',       label: 'Aura' },
+      { key: 'initiative', label: 'Initiative' },
+      { key: 'jealousy',   label: 'Jealousy caused' },
     ],
     // What the other departments' bars say instead of a number.
-    otherStatuses: ['Loading...', 'Seen ✓✓', 'Will get back to you', 'Still discussing', 'Pending approval', 'Out of office'],
+    otherStatuses: ['Pretending not to care', 'Requested a recount', 'Seen ✓✓', 'Still discussing', 'Watching from a distance', 'Asking for the hoodie link'],
     finalLine: 'Tarteeb: We don\'t wait for the plan. We are the plan.',
+    finalSub: 'Everyone else: 👀',
     playAgain: 'Play Again',
     challenge: 'Challenge another department',
-    shareText: 'I scored {score} in Tarteeb Rush. Your department couldn\'t.',
+    shareText: 'I scored {score} in Tarteeb Rush. Your department couldn\'t. (It\'s okay to be jealous.)',
     copied: 'Copied! Now send it to them.',
     copyFailed: 'Couldn\'t copy automatically. Select the text below and copy it.',
   },
@@ -319,15 +353,15 @@ window.TARTEEB_CONTENT = {
   // Rank titles by final score (lowest first). "min" = score needed.
   ranks: [
     { min: 0,     title: 'Volunteer' },
-    { min: 3000,  title: 'Chair Commander' },
-    { min: 6500,  title: 'Extension Cord Whisperer' },
-    { min: 10000, title: 'Crisis Prevention Specialist' },
-    { min: 14000, title: 'Director of Tarteeb' },
+    { min: 2500,  title: 'Chair Commander' },
+    { min: 5500,  title: 'Extension Cord Whisperer' },
+    { min: 8500,  title: 'Crisis Prevention Specialist' },
+    { min: 12000, title: 'Director of Tarteeb' },
   ],
 
   failLines: [
-    'Events: "It\'s fine, nobody noticed." Everybody noticed.',
-    'Executive Council: "Let\'s discuss what went wrong." Tarteeb is already fixing it.',
+    'Events: "It\'s fine, nobody noticed." Everybody noticed. They\'re still jealous.',
     'Marketing has already posted "Doors open!" Nobody checked with logistics.',
+    'The other departments are celebrating a little too loudly. Run it back.',
   ],
 };

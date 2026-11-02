@@ -60,7 +60,9 @@
     fix: 300,            // fixing a problem after it triggers
     prevent: 600,        // fixing it before it triggers (double)
     junkTime: 3,         // seconds lost touching junk
+    hype: 250,           // every 5-combo makes the other departments jealous
   };
+  const HYPE_EVERY = 5;
   const ACTIVITY = { perSecond: 4, deliver: 18, prevent: 45, fix: 25 };
   const DRAIN_PER_PROBLEM = 1.6; // readiness % per second while a problem is live
   const DRAG_THRESHOLD = 8; // px before a press becomes a drag
@@ -153,7 +155,7 @@
   };
 
   function freshStats() {
-    return { delivered: 0, wrong: 0, maxCombo: 0, prevented: 0, triggered: 0, lateFixes: 0, junkCaught: 0 };
+    return { delivered: 0, wrong: 0, maxCombo: 0, prevented: 0, triggered: 0, lateFixes: 0, junkCaught: 0, jealousy: 0, missed: 0 };
   }
 
   function bankStats() {
@@ -168,6 +170,7 @@
   const level = () => C.levels[state.levelIndex];
   const rules = () => level().rules;
   const isDismantle = () => rules().mode === 'dismantle';
+  const mode = () => rules().mode || 'setup';
 
   /* ================= SCREENS & CARDS ================= */
   function setScreen(name) {
@@ -254,6 +257,7 @@
       node.style.order = '';
     }
     el.stations.classList.toggle('dismantle', isDismantle());
+    el.supply.className = 'mode-' + mode();
   }
 
   function shuffleStations() {
@@ -308,6 +312,23 @@
     return best;
   }
 
+  // Conveyor: pick the lane with the most room at the left edge.
+  function beltSpot(force) {
+    const size = itemSize();
+    const sr = localRect(el.supply);
+    const lanes = clamp(Math.floor((sr.h - 10) / (size + 14)), 1, 4);
+    const gap = (sr.h - lanes * size) / (lanes + 1);
+    let best = null, bestRoom = -Infinity;
+    for (let l = 0; l < lanes; l++) {
+      const y = sr.y + gap + l * (size + gap);
+      let room = Infinity;
+      for (const it of state.items) if (Math.abs(it.y - y) < size / 2) room = Math.min(room, it.x - sr.x);
+      if (room > bestRoom) { bestRoom = room; best = { x: sr.x + 4, y }; }
+    }
+    if (!force && bestRoom < size + 12) return null;
+    return best;
+  }
+
   function spawnItem(type, extra = {}) {
     const def = extra.def || C.supplies[type];
     if (!def) return null;
@@ -315,7 +336,15 @@
       const ang = rand(0, Math.PI * 2), sp = rules().drift || 0;
       extra = { ...extra, station: 'storage', vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp };
     }
-    const spot = freeSpot();
+    let spot;
+    if (mode() === 'conveyor') {
+      spot = beltSpot(!!extra.problem);
+      if (!spot) return null;
+      extra = { ...extra, vx: rules().beltSpeed || 70, vy: 0 };
+    } else {
+      spot = freeSpot();
+    }
+    if (mode() === 'tap') extra = { ...extra, life: rules().life || 2.5 };
     const node = h('div', 'item spawn');
     const inner = h('div', 'item-inner');
     inner.style.setProperty('--bob-delay', `${rand(0, 2).toFixed(2)}s`);
@@ -457,7 +486,7 @@
   }
 
   function levelMoods() {
-    return rules().npcMoods || ['sleep', 'phone', 'typing'];
+    return rules().npcMoods || C.defaultMoods || ['stare', 'phone', 'typing'];
   }
 
   function resetNpcs() {
@@ -715,6 +744,7 @@
     fail:    () => arp([392, 330, 262], 0.16, { type: 'sawtooth', vol: 0.1, dur: 0.28 }),
     tick:    () => tone(1250, 0.035, { type: 'square', vol: 0.05 }),
     bar:     () => tone(rand(500, 900), 0.05, { type: 'triangle', vol: 0.07 }),
+    hype:    () => arp([659, 784, 988], 0.06, { type: 'square', vol: 0.09, dur: 0.12 }),
     fanfare: () => arp([392, 523, 659, 784, 1047, 1319, 1568], 0.09, { type: 'triangle', vol: 0.2, dur: 0.24 }),
   };
 
@@ -796,6 +826,52 @@
     if (fn) fn();
   }
 
+  /* ================= JEALOUSY (combo hype) ================= */
+  function checkHype() {
+    if (state.combo > 0 && state.combo % HYPE_EVERY === 0) {
+      state.stats.jealousy++;
+      addScore(POINTS.hype);
+      addActivity(ACTIVITY.prevent);
+      for (const n of state.npcs) { if (n.mood !== 'dinner') { setMood(n, 'stare'); n.moodTimer = 2.5; } }
+      const line = pick(C.jealousLines);
+      toast(deptName(line.from), line.text);
+      const a = el.arena;
+      flash(`${C.ui.hype} +${POINTS.hype}`, a.clientWidth / 2, a.clientHeight * 0.3, 'hype');
+      sfx('hype');
+    }
+  }
+
+  // Tap & conveyor helpers
+  function updateTapItems(dt) {
+    for (const it of state.items.slice()) {
+      if (it.life == null) continue;
+      it.life -= dt;
+      if (it.life < 0.7) it.el.classList.add('expiring');
+      if (it.life <= 0) { removeItem(it); state.combo = 0; state.stats.missed++; }
+    }
+  }
+
+  function updateBelt(dt) {
+    const size = itemSize();
+    const sr = localRect(el.supply);
+    for (const it of state.items.slice()) {
+      if ((state.drag && state.drag.item === it) || it.el.classList.contains('moving')) continue;
+      it.x += (it.vx || 0) * dt;
+      it.homeX = it.x;
+      place(it);
+      if (it.x > sr.x + sr.w - size * 0.35) {
+        removeItem(it);
+        state.combo = 0;
+        state.stats.missed++;
+        if (it.problem && state.problems.includes(it.problem)) {
+          const p = it.problem;
+          p.fixItem = spawnItem(it.type, { def: { emoji: p.def.fix.emoji, label: p.def.fix.label, station: p.station }, problem: p });
+          p.fixItem.el.classList.add('fix');
+        }
+      }
+    }
+  }
+
   /* ================= DELIVERY ================= */
   function deliver(item, stationId) {
     clearSelection();
@@ -807,6 +883,7 @@
       resolveProblem(p);
       state.combo++;
       state.stats.maxCombo = Math.max(state.stats.maxCombo, state.combo);
+      checkHype();
       const pts = early ? POINTS.prevent : POINTS.fix;
       addScore(pts);
       bumpStation(stationId, 'hit');
@@ -831,6 +908,7 @@
       state.combo++;
       state.stats.delivered++;
       state.stats.maxCombo = Math.max(state.stats.maxCombo, state.combo);
+      checkHype();
       const mult = comboMult();
       const pts = Math.round(POINTS.deliver * mult);
       addScore(pts);
@@ -866,6 +944,7 @@
       const item = state.items.find(i => i.el === itemNode);
       if (!item) return;
       e.preventDefault();
+      if (mode() === 'tap') { sfx('pick'); deliver(item, item.station); return; }
       const p = toLocal(e);
       state.drag = { item, pid: e.pointerId, sx: p.x, sy: p.y, ox: p.x - item.x, oy: p.y - item.y, moved: false };
       item.el.classList.add('dragging');
@@ -938,7 +1017,7 @@
     showCard({
       kicker: `Level ${state.levelIndex + 1} of ${C.levels.length}`,
       title: lv.title,
-      body: para(lv.intro, 'card-quote'),
+      body: [para(lv.intro, 'card-quote'), ...(lv.howTo ? [para(lv.howTo, 'card-howto')] : [])],
       buttons: [{ label: C.ui.goButton, primary: true, onClick: beginLevel }],
     });
   }
@@ -983,7 +1062,8 @@
       state.toSpawn = r.target - start;
       state.spawnTimer = r.spawnEvery;
     } else {
-      for (let i = 0; i < Math.min(3, r.maxItems); i++) spawnItem(weightedPick(r.supplies));
+      const first = mode() === 'tap' ? 4 : mode() === 'conveyor' ? 1 : 3;
+      for (let i = 0; i < Math.min(first, r.maxItems); i++) spawnItem(weightedPick(r.supplies));
     }
     state.running = true;
     lastTime = performance.now();
@@ -1002,22 +1082,41 @@
     sfx('clear');
     confetti();
     const isLast = state.levelIndex >= C.levels.length - 1;
+    const body = [
+      para(level().clearLine, 'card-quote'),
+      para([
+        `+${fmt(levelScore)} (${C.ui.timeBonus.toLowerCase()} +${fmt(bonus)})`,
+        ...(cleared.jealousy ? [`${C.ui.jealousyCaused}: ${cleared.jealousy}`] : []),
+        ...(cleared.prevented ? [`${C.ui.prevented}: ${cleared.prevented}`] : []),
+        `${C.ui.totalScore}: ${fmt(state.score)}`,
+      ].join(' · '), 'card-stats'),
+    ];
+    if (!isLast) {
+      body.push(roastBlock());
+      const nx = C.levels[state.levelIndex + 1];
+      const up = h('div', 'upnext');
+      up.append(
+        h('span', 'upnext-kicker', fill(C.ui.upNext, { n: state.levelIndex + 2 })),
+        h('strong', 'upnext-title', nx.title),
+        h('p', 'upnext-intro', nx.intro),
+      );
+      if (nx.howTo) up.appendChild(h('p', 'upnext-how', nx.howTo));
+      body.push(up);
+    }
     showCard({
       kicker: fill(C.ui.levelClearedKicker, { n: state.levelIndex + 1 }),
       title: level().title,
-      body: [
-        para(level().clearLine, 'card-quote'),
-        scoreTable([
-          ...(cleared.prevented ? [[C.ui.prevented, String(cleared.prevented)]] : []),
-          [C.ui.timeBonus, `+${fmt(bonus)}`],
-          [C.ui.levelScore, fmt(levelScore)],
-          [C.ui.totalScore, fmt(state.score), 'total'],
-        ]),
-      ],
+      body,
       buttons: isLast
-        ? [{ label: C.ui.continueButton, primary: true, onClick: showShowdown }]
-        : [{ label: C.ui.continueButton, primary: true, onClick: showRoast }],
+        ? [{ label: C.ui.resultsButton, primary: true, onClick: showShowdown }]
+        : [{ label: fill(C.ui.startLevel, { n: state.levelIndex + 2 }), primary: true, onClick: startNextLevel }],
     });
+  }
+
+  function startNextLevel() {
+    state.levelIndex++;
+    prepareLevel();
+    beginLevel();
   }
 
   function nextRoast() {
@@ -1027,23 +1126,19 @@
     return state.roastDeck.pop();
   }
 
-  function showRoast() {
+  function roastBlock() {
     const r = nextRoast();
+    const wrap = h('div', 'roast-wrap');
+    wrap.appendChild(h('span', 'roast-kicker', C.ui.roastKicker));
     const them = h('div', 'roast-them');
     them.append(h('span', 'roast-dept', r.dept), h('p', 'roast-line', r.them));
-    const parts = [them];
+    wrap.appendChild(them);
     if (r.tarteeb) {
       const us = h('div', 'roast-us');
       us.append(h('span', 'roast-dept', C.ui.roastTarteeb), h('p', 'roast-line', r.tarteeb));
-      parts.push(us);
+      wrap.appendChild(us);
     }
-    showCard({
-      kicker: C.ui.roastKicker,
-      title: '',
-      body: parts,
-      buttons: [{ label: C.ui.nextButton, primary: true, onClick: nextLevel }],
-    });
-    el.overlay.querySelector('.card').classList.add('roast');
+    return wrap;
   }
 
   function nextLevel() {
@@ -1090,11 +1185,12 @@
     const r = state.run;
     const attempts = r.delivered + r.wrong + r.prevented + r.lateFixes;
     const effective = attempts ? Math.round(((attempts - r.wrong) / attempts) * 100) : 100;
+    const jealous = r.jealousy + r.prevented;
     return {
-      activity: `${fmt(state.activity)} actions`,
-      effectiveness: `${effective}% accurate`,
+      cool: `best combo ×${r.maxCombo} · ${effective}% clean`,
+      aura: `${fmt(state.activity)} aura`,
       initiative: `${r.prevented} problem${r.prevented === 1 ? '' : 's'} prevented`,
-      fun: `best combo ×${r.maxCombo}`,
+      jealousy: `${jealous} jealous moment${jealous === 1 ? '' : 's'}`,
     };
   }
 
@@ -1256,6 +1352,8 @@
       state.spawnTimer = r.spawnEvery * rand(0.8, 1.25);
     }
     if (isDismantle()) driftItems(dt);
+    if (mode() === 'tap') updateTapItems(dt);
+    if (mode() === 'conveyor') updateBelt(dt);
 
     if (r.chaosEvery > 0) {
       state.chaosTimer -= dt;

@@ -243,6 +243,34 @@ button { font-family: inherit; }
 .roast-them .roast-line { font-weight: 600; }
 .card.roast .btn-ghost { color: var(--paper); border-color: var(--grey-3); }
 
+/* ================= LEVEL MODES ================= */
+#supply.mode-conveyor {
+  border-style: solid;
+  background: repeating-linear-gradient(90deg, rgba(201,162,39,.07) 0 2px, transparent 2px 34px), var(--ink-2);
+  background-size: 34px 100%;
+  animation: belt 0.5s linear infinite;
+}
+#supply.mode-tap { border-color: var(--gold-lo); }
+.mode-tap ~ #layer .item { cursor: pointer; }
+.item.expiring .item-inner { animation: expire .25s ease-in-out infinite alternate; }
+.flash.hype { font-size: 22px; color: var(--gold-hi); letter-spacing: .04em; animation-duration: 1.2s; text-shadow: 0 0 18px rgba(201,162,39,.8), 0 2px 6px rgba(0,0,0,.8); }
+.npc.stare .npc-body, .npc.jealous .npc-body { border-color: #6b6b6b; }
+.npc.stare .npc-bubble { animation: stare 1.4s ease-in-out infinite; }
+
+/* combined between-level card */
+.card-howto { font-size: 13px; font-weight: 700; color: var(--gold-lo); background: #efe6cc; border-radius: 10px; padding: 8px 10px; }
+.roast-wrap { margin: 14px 0 4px; }
+.roast-kicker { display: block; font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: #8a8270; margin-bottom: 6px; }
+.card .roast-them { padding: 10px 12px; }
+.card .roast-us { padding: 10px 12px; margin-top: 8px; }
+.card .roast-line { font-size: 14px; }
+.upnext { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cfc6b0; }
+.upnext-kicker { display: block; font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-lo); }
+.upnext-title { display: block; font-size: 17px; font-weight: 900; margin: 2px 0 4px; color: var(--ink); }
+.upnext-intro { margin: 0 0 6px; font-weight: 600; }
+.upnext-how { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--gold-lo); }
+.sd-final-sub { margin: -8px 0 18px; font-size: 15px; font-weight: 700; color: var(--grey); }
+
 /* ================= ACTIVITY TRACKER ================= */
 .tracker { margin-top: 7px; }
 .tracker-tarteeb { display: flex; align-items: center; gap: 8px; }
@@ -384,7 +412,9 @@ button { font-family: inherit; }
 .card-body { font-size: 14px; font-weight: 500; line-height: 1.45; color: #2b2b2b; }
 .card-body p { margin: 0 0 10px; }
 .card-quote { font-size: 16px; font-weight: 700; color: var(--ink); border-left: 4px solid var(--gold); padding-left: 12px; }
-.card-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; position: sticky; bottom: -20px; padding: 10px 0 20px; margin-bottom: -20px; background: linear-gradient(rgba(246,242,232,0), var(--paper) 30%); }
+.card.roast .card-actions { background: linear-gradient(rgba(23,23,23,0), var(--ink-2) 30%); }
+.card-stats { font-size: 12.5px; font-weight: 700; color: #4a4536; line-height: 1.5; }
 .card-actions .btn { flex: 1 1 auto; }
 .card .btn-ghost { color: var(--ink); border-color: #c9c2b0; }
 .score-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 4px; }
@@ -455,6 +485,9 @@ button { font-family: inherit; }
 @keyframes cardIn { from { transform: translateY(18px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
 
 @keyframes flicker { 0% { opacity: 1; } 8% { opacity: .3; } 12% { opacity: 1; } 85% { opacity: 1; } 90% { opacity: .2; } 94% { opacity: .9; } 100% { opacity: 0; } }
+@keyframes belt { from { background-position: 0 0; } to { background-position: 34px 0; } }
+@keyframes expire { from { opacity: 1; } to { opacity: .3; } }
+@keyframes stare { 0%,100% { transform: translateX(-50%); } 30% { transform: translateX(-62%); } 70% { transform: translateX(-38%); } }
 @keyframes stripes { to { background-position: 40px 0; } }
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes chipFlip { 0% { opacity: .2; } 100% { opacity: 1; } }

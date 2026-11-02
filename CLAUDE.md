@@ -15,7 +15,9 @@ A browser game for Tarteeb (Logistics, RIZQ Society, LUMS). Vanilla HTML/CSS/JS.
 - Entities are DOM nodes positioned with `transform` inside `#arena`. Coordinates are relative to `#arena`.
 - Loop: `requestAnimationFrame` with delta time capped at 50 ms. `update(dt)` runs only while `state.running && !state.paused`. The game pauses when the tab is hidden.
 - Input uses pointer events only (`pointerdown/move/up/cancel` on `#arena`). Drag an item onto a station, or tap the item and then tap the station.
-- Level modes: `setup` (deliver supplies to stations) and `dismantle` (collect drifting items into Storage).
+- Level modes (`rules.mode`): `setup` (drag to stations), `tap` (tap items, they auto-deliver, and they expire after `life` seconds), `conveyor` (items slide along belt lanes at `beltSpeed`, and fix items respawn if missed) and `dismantle` (collect drifting items into Storage).
+- Jealousy: every `HYPE_EVERY` (5) combo calls `checkHype`, which gives bonus points, makes the NPCs stare and shows a line from `content.jealousLines`.
+- Between levels there is one combined card (results, a roast card and the next level's brief), so there is one tap per level.
 - Initiative: `spawnProblem` puts a warning chip on a station and spawns a gold fix item. Delivering it during the warning gives `POINTS.prevent` and the banner. After it triggers it gives `POINTS.fix`, and readiness drains while the problem is live.
 - Chaos effects live in `CHAOS_EFFECTS` (game.js). `content.chaos` picks which effect each event uses.
 - Sound is synthesised with Web Audio in `SFX`. There are no audio files.
@@ -32,7 +34,7 @@ In `content.js`, add one line to `roasts`:
 ## Add a level
 In `content.js`, copy a whole `{ ... }` block in `levels` and edit it. The level count updates automatically. Main fields:
 - Text: `title`, `intro`, `clearLine`, `timerLabel`, optional `stationNames`, `seatCounter`, `messages`.
-- `rules.mode`: `'setup'` or `'dismantle'`.
+- `rules.mode`: `'setup'`, `'tap'`, `'conveyor'` or `'dismantle'`.
 - `rules.supplies`: supply ids from `supplies`, with weights.
 - `rules.problems`: problem ids from `problems`.
 - Timers: `problemEvery`, `junkEvery`, `chaosEvery`, `messageEvery` (0 = off).
