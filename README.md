@@ -33,7 +33,7 @@ Choose your position first:
 | Position | How it plays |
 |---|---|
 | Team Member | Fastest walker, carries 1 item. Ability: Sprint. 3 rival departments. Score ×1 |
-| AD | Carries 2 items, has 1 volunteer. Ability: Delegate. 4 rival departments. Score ×1.25 |
+| Assistant Director (AD) | Carries 2 items, has 1 volunteer. Ability: Delegate. 4 rival departments. Score ×1.25 |
 | Director | Slower, has 2 volunteers, must sign off department requests (📝), all 6 departments compete. Score ×1.5 |
 
 Controls: drag anywhere to walk or tap a spot (phone); arrow keys or WASD, plus Space for the ability (computer). Locally it's at `http://localhost:8000/tarteeb-world/`; on GitHub Pages at `https://<username>.github.io/<repo>/tarteeb-world/`. All its text, including shifts, positions and roasts, is in `tarteeb-world/content.js`.

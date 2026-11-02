@@ -90,7 +90,7 @@ window.ON_DUTY_CONTENT = {
       multiplier: 1, npcs: 3, approvals: false, taskEvery: 7, maxTasks: 4,
     },
     {
-      id: 'ad', name: 'AD', badge: 'AD',
+      id: 'ad', name: 'Assistant Director', badge: 'AD',
       blurb: 'More requests, bigger hands, and a volunteer to send on jobs.',
       perks: ['Carry 2 items', '1 volunteer', 'Ability: Delegate', '4 rival departments', 'Score ×1.25'],
       speed: 132, carry: 2, volunteers: 1, ability: 'delegate', abilityName: 'Delegate', cooldown: 8,
