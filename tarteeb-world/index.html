@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0E0E0E">
   <title>Tarteeb On Duty</title>
-  <meta name="description" content="Walk the venue as a Tarteeb Team Member, AD or Director.">
+  <meta name="description" content="Walk the venue as a Tarteeb Team Member, AD or Director across five events while every other department gets jealous.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -41,6 +41,7 @@
           <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause">⏸</button>
         </div>
         <div class="meter"><div class="meter-fill" id="meter-fill"></div><span class="meter-text" id="meter-text"></span></div>
+        <div class="board" id="board" aria-label="Department scoreboard"></div>
         <div class="tasks" id="tasks" aria-label="Open requests"></div>
       </header>
       <div id="stage-wrap">
@@ -59,8 +60,14 @@
         <div class="res-score" id="res-score">0</div>
         <div class="res-best" id="res-best"></div>
         <div class="res-rank"><span class="hud-label" data-text="results.rankLabel"></span><span id="res-rank"></span></div>
+        <div class="chart">
+          <h3 class="chart-title" data-text="results.chartTitle"></h3>
+          <div id="chart"></div>
+          <p class="chart-foot" data-text="results.footnote"></p>
+        </div>
         <table class="res-table" id="res-table"></table>
         <p class="res-final" id="res-final"></p>
+        <p class="res-final-sub" id="res-final-sub"></p>
         <div class="res-actions">
           <button class="btn btn-primary" id="btn-again" type="button" data-text="results.again"></button>
           <button class="btn btn-ghost" id="btn-change" type="button" data-text="results.change"></button>
@@ -73,8 +80,9 @@
 
     <div id="overlay" class="overlay" hidden>
       <div class="card" role="dialog" aria-modal="true">
+        <p class="card-kicker" id="card-kicker"></p>
         <h2 class="card-title" id="card-title"></h2>
-        <p class="card-body" id="card-body"></p>
+        <div class="card-body" id="card-body"></div>
         <div class="card-actions" id="card-actions"></div>
       </div>
     </div>

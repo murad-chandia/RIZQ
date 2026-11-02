@@ -28,7 +28,10 @@ A browser game for Tarteeb (Logistics, RIZQ Society, LUMS). Vanilla HTML/CSS/JS.
 Separate top-down canvas game with its own `index.html`, `style.css`, `content.js` (`window.ON_DUTY_CONTENT`) and `game.js`.
 - The world is fixed at 360×600 units and scaled to fit the canvas (`view.scale`, `view.ox/oy`). The layout is in `ZONES`, `STORAGE` and `SLOTS`.
 - Positions (`content.positions`) set speed, carry, volunteers, ability (`sprint` or `delegate`), score multiplier, the number of department NPCs and approvals.
-- Every request is a `task`: `kind` is `supply` or `fix`, and it has an `item` with `state` set to `storage`, `player` or `volunteer`. Delivery happens when the player enters the station zone.
+- Five shifts (`content.shifts`) reuse Tarteeb Rush's events. `rules.mode` is `setup` or `dismantle` (carry floor items back to Storage), with `pace`, `supplies` weights, `problems`, `stealEvery`, `chaosEvery`/`chaos` and optional `stationNames`.
+- Every request is a `task`: `kind` is `supply`, `fix` or `pack`. Its `dest` is a station id or `'storage'`, and its `item.state` is `storage`, `floor`, `player`, `volunteer` or `npc`. Use `itemPos()` and `destZone()`.
+- Competition: `startSteal` sends a department NPC to an open item. If it gets there first it carries the item to the destination and gains `state.board` points. The player beats it there or bumps it to take the item back (`raceWon`). The HUD scoreboard comes from `state.board`, and the results chart uses the real department points.
+- Between shifts there is one card with results, a roast and the next shift's brief. The run ends with the Showdown chart.
 - Input: drag uses a floating joystick, a quick tap walks to a point, and keys are WASD or arrows with Space for the ability. Test hook: `window.__onDuty`.
 
 ## Add a roast card

@@ -26,15 +26,17 @@ Fill **Venue Readiness** to 100% before the timer runs out. Play the full run fo
 Every 5-delivery combo makes the other departments jealous, which earns bonus points. When a station glows, deliver the **gold fix item** early for double points ("Tarteeb saw it coming"). Don't touch the distractions the other departments drop. They cost time.
 
 ## Second game: Tarteeb: On Duty
-In the `tarteeb-world/` folder. You play as a Tarteeb member walking around the venue in 2D: pick up supplies in Storage and carry them to the station that asked for them before time runs out. Choose your position first:
+In the `tarteeb-world/` folder. You play a Tarteeb member walking around the venue in 2D, across the same five events as Tarteeb Rush: Orientation, Panel Discussion, Charity Drive, Flagship and the Dismantling boss. You pick up supplies in Storage and carry them to the station that asked for them. The other departments compete with you: they race you for supplies to steal the credit (beat them there, or bump them to take it back), they stop you for "quick questions", and a live scoreboard shows them barely moving. A roast card appears between shifts, and the run ends with the Coolest Department Showdown.
+
+Choose your position first:
 
 | Position | How it plays |
 |---|---|
-| Team Member | Fastest walker, carries 1 item. Ability: Sprint. Score ×1 |
-| AD | Carries 2 items, has 1 volunteer. Ability: Delegate (send the volunteer on a job). Score ×1.25 |
-| Director | Slower, has 2 volunteers, has to approve department requests (📝), and every department stops them for a "quick question". Score ×1.5 |
+| Team Member | Fastest walker, carries 1 item. Ability: Sprint. 3 rival departments. Score ×1 |
+| AD | Carries 2 items, has 1 volunteer. Ability: Delegate. 4 rival departments. Score ×1.25 |
+| Director | Slower, has 2 volunteers, must sign off department requests (📝), all 6 departments compete. Score ×1.5 |
 
-Controls: drag anywhere to walk (phone), arrow keys or WASD and Space for the ability (computer), or tap a spot to walk there. Locally, open `http://localhost:8000/tarteeb-world/`. On GitHub Pages it is at `https://<username>.github.io/<repo>/tarteeb-world/`. Its text lives in `tarteeb-world/content.js`.
+Controls: drag anywhere to walk or tap a spot (phone); arrow keys or WASD, plus Space for the ability (computer). Locally it's at `http://localhost:8000/tarteeb-world/`; on GitHub Pages at `https://<username>.github.io/<repo>/tarteeb-world/`. All its text, including shifts, positions and roasts, is in `tarteeb-world/content.js`.
 
 ## Deploy to GitHub Pages
 1. Merge the game into `main`. The files must be at the repo root.
