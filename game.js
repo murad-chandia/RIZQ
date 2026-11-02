@@ -49,7 +49,7 @@
       try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked */ }
     },
   };
-  const KEYS = { high: 'tarteebRush.highScore', muted: 'tarteebRush.muted' };
+  const KEYS = { high: 'tarteebRush.highScore', muted: 'tarteebRush.muted', levelBest: 'tarteebRush.levelBest' };
 
   /* ================= TUNING ================= */
   const POINTS = {
@@ -88,6 +88,7 @@
     shareFallback: $('#share-fallback'),
     howto: $('#howto'),
     btnStart: $('#btn-start'),
+    btnLevels: $('#btn-levels'),
     startBest: $('#start-best'),
     score: $('#hud-score'),
     timer: $('#hud-timer'),
@@ -152,6 +153,8 @@
     stats: null,
     run: null,
     lastTick: 0,
+    practice: false,
+    levelBest: store.get(KEYS.levelBest, {}) || {},
   };
 
   function freshStats() {
@@ -998,10 +1001,20 @@
 
   /* ================= LEVEL FLOW ================= */
   function startRun() {
+    beginRun(0, false);
+  }
+
+  // Practice: play one chosen level (and optionally continue from there).
+  function startPractice(index) {
+    beginRun(index, true);
+  }
+
+  function beginRun(index, practice) {
     initAudio();
+    state.practice = practice;
     state.score = 0;
     state.activity = 0;
-    state.levelIndex = 0;
+    state.levelIndex = index;
     state.run = { ...freshStats(), levelsCleared: 0 };
     state.runStartHigh = state.highScore;
     state.stats = null;
@@ -1082,6 +1095,7 @@
     sfx('clear');
     confetti();
     const isLast = state.levelIndex >= C.levels.length - 1;
+    if (state.practice) { practiceClear(levelScore, bonus, cleared, isLast); return; }
     const body = [
       para(level().clearLine, 'card-quote'),
       para([
@@ -1115,8 +1129,81 @@
 
   function startNextLevel() {
     state.levelIndex++;
+    if (state.practice) state.score = 0;
     prepareLevel();
     beginLevel();
+  }
+
+  /* ================= LEVEL MENU (practice mode) ================= */
+  function saveLevelBest(index, score) {
+    const key = String(index);
+    if (score > (state.levelBest[key] || 0)) {
+      state.levelBest[key] = score;
+      store.set(KEYS.levelBest, state.levelBest);
+      return true;
+    }
+    return false;
+  }
+
+  function showLevelMenu() {
+    initAudio();
+    const list = h('div', 'level-list');
+    C.levels.forEach((lv, i) => {
+      const b = h('button', 'level-pick');
+      b.type = 'button';
+      const info = h('span', 'level-pick-info');
+      info.append(h('strong', 'level-pick-title', lv.title), h('span', 'level-pick-tag', lv.tag || ''));
+      const best = state.levelBest[String(i)];
+      b.append(
+        h('span', 'level-pick-num', String(i + 1)),
+        info,
+        h('span', 'level-pick-best', best ? fill(C.ui.levelBest, { score: fmt(best) }) : ''),
+      );
+      b.addEventListener('click', () => { hideCard(); startPractice(i); });
+      list.appendChild(b);
+    });
+    showCard({
+      kicker: C.ui.levelPickKicker,
+      title: C.ui.levelPickTitle,
+      body: [list, para(C.ui.levelPickNote, 'level-note')],
+      buttons: [{ label: C.ui.backButton, primary: false, onClick: hideCard }],
+    });
+  }
+
+  function practiceClear(levelScore, bonus, cleared, isLast) {
+    const isNew = saveLevelBest(state.levelIndex, levelScore);
+    const stats = [
+      `+${fmt(levelScore)} (${C.ui.timeBonus.toLowerCase()} +${fmt(bonus)})`,
+      ...(cleared.jealousy ? [`${C.ui.jealousyCaused}: ${cleared.jealousy}`] : []),
+      ...(cleared.prevented ? [`${C.ui.prevented}: ${cleared.prevented}`] : []),
+      isNew ? C.showdown.newBest : fill(C.ui.levelBest, { score: fmt(state.levelBest[String(state.levelIndex)] || levelScore) }),
+    ];
+    const buttons = [];
+    if (!isLast) buttons.push({ label: fill(C.ui.startLevel, { n: state.levelIndex + 2 }), primary: true, onClick: startNextLevel });
+    buttons.push({ label: C.ui.replayButton, primary: isLast, onClick: replayLevel });
+    buttons.push({ label: C.ui.levelMenuButton, primary: false, onClick: backToMenu });
+    showCard({
+      kicker: C.ui.practiceDone,
+      title: level().title,
+      body: [para(level().clearLine, 'card-quote'), para(stats.join(' · '), 'card-stats'), roastBlock()],
+      buttons,
+    });
+  }
+
+  function replayLevel() {
+    state.score = 0;
+    prepareLevel();
+    beginLevel();
+  }
+
+  function backToMenu() {
+    state.running = false;
+    state.paused = false;
+    clearItems();
+    hideCard();
+    renderBest();
+    setScreen('start');
+    showLevelMenu();
   }
 
   function nextRoast() {
@@ -1158,7 +1245,9 @@
       body: para(pick(C.failLines), 'card-quote'),
       buttons: [
         { label: C.ui.retryButton, primary: true, onClick: retryLevel },
-        { label: C.ui.endRunButton, primary: false, onClick: endRun },
+        state.practice
+          ? { label: C.ui.levelMenuButton, primary: false, onClick: backToMenu }
+          : { label: C.ui.endRunButton, primary: false, onClick: endRun },
       ],
     });
   }
@@ -1307,6 +1396,7 @@
   }
 
   function saveHigh() {
+    if (state.practice) return; // only full runs count toward the overall best
     if (state.score > state.highScore) {
       state.highScore = state.score;
       store.set(KEYS.high, state.highScore);
@@ -1324,7 +1414,9 @@
       body: para(C.ui.pausedBody),
       buttons: [
         { label: C.ui.resumeButton, primary: true, onClick: resume },
-        { label: C.ui.endRunButton, primary: false, onClick: endRun },
+        state.practice
+          ? { label: C.ui.levelMenuButton, primary: false, onClick: backToMenu }
+          : { label: C.ui.endRunButton, primary: false, onClick: endRun },
       ],
     });
   }
@@ -1443,6 +1535,7 @@
     buildNpcs();
     buildTicker();
     el.btnStart.addEventListener('click', startRun);
+    el.btnLevels.addEventListener('click', showLevelMenu);
     el.btnPause.addEventListener('click', pause);
     el.muteBtns.forEach(b => b.addEventListener('click', toggleMute));
     el.btnAgain.addEventListener('click', startRun);

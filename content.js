@@ -29,6 +29,15 @@ window.TARTEEB_CONTENT = {
     nextButton: 'Next level',
     startLevel: 'Start Level {n}',
     resultsButton: 'See the showdown',
+    chooseLevel: 'Choose a level',
+    levelPickKicker: 'Practice mode',
+    levelPickTitle: 'Pick any level',
+    levelPickNote: 'Practice levels don\'t count toward your overall best. Play the full run for that.',
+    levelMenuButton: 'Level menu',
+    replayButton: 'Replay level',
+    backButton: 'Back',
+    levelBest: 'Best {score}',
+    practiceDone: 'Practice level cleared',
     retryButton: 'Retry level',
     endRunButton: 'End run',
     playAgainButton: 'Play again',
@@ -87,7 +96,7 @@ window.TARTEEB_CONTENT = {
    * To add a level, copy one whole { ... } block, paste it where you want it, and edit it.
    *
    * Text:
-   *   title, intro (the one-line brief), howTo (one line on how this level plays), clearLine
+   *   title, tag (short label on the level menu), intro (the one-line brief), howTo (one line on how this level plays), clearLine
    *   timerLabel   = label above the countdown
    *   stationNames = optional renames for this level, e.g. { stage: { name: 'Loading Bay', icon: '🚐' } }
    *   seatCounter  = optional, text on the Seating station ({n} = chairs placed)
@@ -116,6 +125,7 @@ window.TARTEEB_CONTENT = {
   levels: [
     {
       title: 'Orientation Session',
+      tag: 'Drag & drop',
       intro: 'Events said it\'s a small session. It is not a small session.',
       howTo: 'Drag each supply to its station, or tap it and then tap the station.',
       clearLine: 'Small session. Big setup. The freshers already want to join Tarteeb.',
@@ -129,6 +139,7 @@ window.TARTEEB_CONTENT = {
     },
     {
       title: 'Panel Discussion',
+      tag: 'Chair Rush: tap fast',
       intro: 'Marketing promised 300 attendees. Tarteeb has to find 300 chairs.',
       howTo: 'Chair Rush: just TAP chairs. They fly to Seating by themselves. Don\'t tap the distractions.',
       clearLine: '300 chairs in 25 seconds. Marketing is "not impressed" (very impressed).',
@@ -143,6 +154,7 @@ window.TARTEEB_CONTENT = {
     },
     {
       title: 'Charity Drive',
+      tag: 'Conveyor belt',
       intro: 'Projects had the idea. Tarteeb has the boxes, the vans and the volunteers.',
       howTo: 'Conveyor: supplies slide past on a belt. Grab them before they leave the screen.',
       clearLine: 'Van loaded. Projects is drafting an idea called "be more like Tarteeb".',
@@ -157,6 +169,7 @@ window.TARTEEB_CONTENT = {
     },
     {
       title: 'Flagship Event',
+      tag: 'Everything at once',
       intro: 'Every department is panicking at once. Tarteeb is not.',
       howTo: 'Everything at once: drag supplies, fix the glowing problems early, survive the chaos.',
       clearLine: 'Flagship delivered. Four departments just asked to "collab" with Tarteeb.',
@@ -172,6 +185,7 @@ window.TARTEEB_CONTENT = {
     },
     {
       title: 'Boss: Dismantling',
+      tag: 'Boss level',
       intro: 'Everyone left for dinner. Return and count every item before security locks the venue.',
       howTo: 'Items are wandering around. Drag every single one into Storage.',
       clearLine: 'Every item counted. Even security asked how to join Tarteeb.',

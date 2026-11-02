@@ -16,7 +16,7 @@ python3 -m http.server 8000
 Then open http://localhost:8000. To test on your phone, connect it to the same Wi-Fi and open `http://<your-computer-ip>:8000`.
 
 ## How to play
-Fill **Venue Readiness** to 100% before the timer runs out. Each level works differently:
+Fill **Venue Readiness** to 100% before the timer runs out. Play the full run for an overall best score, or tap **Choose a level** to practise any level on its own (each level keeps its own best). Each level works differently:
 1. **Orientation Session:** drag each supply to its station, or tap it and then tap the station.
 2. **Panel Discussion (Chair Rush):** tap chairs as fast as you can. They fly to Seating by themselves.
 3. **Charity Drive (Conveyor):** supplies slide past on a belt. Grab them before they leave.
