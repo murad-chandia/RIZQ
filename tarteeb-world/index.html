@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0E0E0E">
+  <title>Tarteeb On Duty</title>
+  <meta name="description" content="Walk the venue as a Tarteeb Team Member, AD or Director.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- START: choose position -->
+    <section id="screen-start" class="screen active" aria-label="Start">
+      <button class="icon-btn mute-btn start-mute" type="button" aria-label="Mute sound">🔊</button>
+      <div class="start-inner">
+        <p class="kicker" data-text="meta.org"></p>
+        <h1 class="logo"><span class="logo-a">Tarteeb</span><span class="logo-b">On Duty</span></h1>
+        <p class="tagline" data-text="meta.tagline"></p>
+        <h2 class="section-title" data-text="ui.choosePosition"></h2>
+        <div class="positions" id="positions" role="radiogroup"></div>
+        <button class="btn btn-primary" id="btn-start" type="button" data-text="ui.startButton"></button>
+        <p class="best" id="start-best"></p>
+        <ul class="howto" id="howto"></ul>
+      </div>
+    </section>
+
+    <!-- GAME -->
+    <section id="screen-game" class="screen" aria-label="Game">
+      <header class="hud">
+        <div class="hud-row">
+          <span class="badge" id="hud-badge">TM</span>
+          <div class="hud-stat"><span class="hud-label" data-text="ui.score"></span><span class="hud-value" id="hud-score">0</span></div>
+          <div class="hud-carry"><span class="hud-label" data-text="ui.carrying"></span><span id="hud-carry" class="carry-icons"></span></div>
+          <div class="hud-stat hud-timer"><span class="hud-label" data-text="ui.time"></span><span class="hud-value" id="hud-timer">0</span></div>
+          <button class="icon-btn mute-btn" type="button" aria-label="Mute sound">🔊</button>
+          <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause">⏸</button>
+        </div>
+        <div class="meter"><div class="meter-fill" id="meter-fill"></div><span class="meter-text" id="meter-text"></span></div>
+        <div class="tasks" id="tasks" aria-label="Open requests"></div>
+      </header>
+      <div id="stage-wrap">
+        <canvas id="canvas"></canvas>
+        <div id="toasts" aria-live="polite"></div>
+        <div id="floaters"></div>
+        <button class="ability" id="btn-ability" type="button"><span class="ability-name" id="ability-name"></span><span class="ability-cd" id="ability-cd"></span></button>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="screen-results" class="screen" aria-label="Shift report">
+      <div class="res-inner">
+        <p class="kicker" data-text="results.kicker"></p>
+        <h2 class="res-title" id="res-title"></h2>
+        <div class="res-score" id="res-score">0</div>
+        <div class="res-best" id="res-best"></div>
+        <div class="res-rank"><span class="hud-label" data-text="results.rankLabel"></span><span id="res-rank"></span></div>
+        <table class="res-table" id="res-table"></table>
+        <p class="res-final" id="res-final"></p>
+        <div class="res-actions">
+          <button class="btn btn-primary" id="btn-again" type="button" data-text="results.again"></button>
+          <button class="btn btn-ghost" id="btn-change" type="button" data-text="results.change"></button>
+          <button class="btn btn-ghost" id="btn-share" type="button" data-text="results.challenge"></button>
+        </div>
+        <p class="share-status" id="share-status" aria-live="polite"></p>
+        <textarea class="share-fallback" id="share-fallback" readonly hidden rows="3" aria-label="Share text"></textarea>
+      </div>
+    </section>
+
+    <div id="overlay" class="overlay" hidden>
+      <div class="card" role="dialog" aria-modal="true">
+        <h2 class="card-title" id="card-title"></h2>
+        <p class="card-body" id="card-body"></p>
+        <div class="card-actions" id="card-actions"></div>
+      </div>
+    </div>
+    <div id="confetti" aria-hidden="true"></div>
+  </div>
+
+  <script src="content.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

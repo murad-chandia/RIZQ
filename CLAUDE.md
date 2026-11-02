@@ -24,6 +24,13 @@ A browser game for Tarteeb (Logistics, RIZQ Society, LUMS). Vanilla HTML/CSS/JS.
 - Storage: `store.get/set` wraps `localStorage` in try/catch. Keys are `tarteebRush.highScore` and `tarteebRush.muted`.
 - Test hook: `window.__tarteeb.state`.
 
+## Second game: `tarteeb-world/` (Tarteeb: On Duty)
+Separate top-down canvas game with its own `index.html`, `style.css`, `content.js` (`window.ON_DUTY_CONTENT`) and `game.js`.
+- The world is fixed at 360×600 units and scaled to fit the canvas (`view.scale`, `view.ox/oy`). The layout is in `ZONES`, `STORAGE` and `SLOTS`.
+- Positions (`content.positions`) set speed, carry, volunteers, ability (`sprint` or `delegate`), score multiplier, the number of department NPCs and approvals.
+- Every request is a `task`: `kind` is `supply` or `fix`, and it has an `item` with `state` set to `storage`, `player` or `volunteer`. Delivery happens when the player enters the station zone.
+- Input: drag uses a floating joystick, a quick tap walks to a point, and keys are WASD or arrows with Space for the ability. Test hook: `window.__onDuty`.
+
 ## Add a roast card
 In `content.js`, add one line to `roasts`:
 ```js

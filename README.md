@@ -25,6 +25,17 @@ Fill **Venue Readiness** to 100% before the timer runs out. Play the full run fo
 
 Every 5-delivery combo makes the other departments jealous, which earns bonus points. When a station glows, deliver the **gold fix item** early for double points ("Tarteeb saw it coming"). Don't touch the distractions the other departments drop. They cost time.
 
+## Second game: Tarteeb: On Duty
+In the `tarteeb-world/` folder. You play as a Tarteeb member walking around the venue in 2D: pick up supplies in Storage and carry them to the station that asked for them before time runs out. Choose your position first:
+
+| Position | How it plays |
+|---|---|
+| Team Member | Fastest walker, carries 1 item. Ability: Sprint. Score ×1 |
+| AD | Carries 2 items, has 1 volunteer. Ability: Delegate (send the volunteer on a job). Score ×1.25 |
+| Director | Slower, has 2 volunteers, has to approve department requests (📝), and every department stops them for a "quick question". Score ×1.5 |
+
+Controls: drag anywhere to walk (phone), arrow keys or WASD and Space for the ability (computer), or tap a spot to walk there. Locally, open `http://localhost:8000/tarteeb-world/`. On GitHub Pages it is at `https://<username>.github.io/<repo>/tarteeb-world/`. Its text lives in `tarteeb-world/content.js`.
+
 ## Deploy to GitHub Pages
 1. Merge the game into `main`. The files must be at the repo root.
 2. On GitHub, open the repo, then **Settings → Pages**.
